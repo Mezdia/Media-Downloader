@@ -1,0 +1,8 @@
+aiogram>=3.15.0
+aiosqlite>=0.20.0
+yt-dlp>=2025.1.26
+python-dotenv>=1.0.1
+
+[dev]
+pytest>=8.3.4
+pytest-asyncio>=0.25.0

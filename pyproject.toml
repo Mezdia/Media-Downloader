@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ytdl-telegram-bot"
+version = "0.1.0"
+description = "Production-ready multilingual Telegram YouTube downloader bot with cache and admin controls"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Mezdia" }]
+dependencies = [
+  "aiogram>=3.15.0",
+  "aiosqlite>=0.20.0",
+  "yt-dlp>=2025.1.26",
+  "python-dotenv>=1.0.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.4",
+  "pytest-asyncio>=0.25.0"
+]
+
+[project.scripts]
+ytdl-bot = "ytdl_bot.main:run"
+ytdl-bot-migrate = "ytdl_bot.migrate:run"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
