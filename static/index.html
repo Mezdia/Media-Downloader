@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader API - Test UI</title>
+    <style>
+        :root {
+            --primary: #ff0000;
+            --primary-dark: #cc0000;
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --text: #ffffff;
+            --text-secondary: #aaaaaa;
+            --border: #333333;
+            --success: #00c853;
+            --error: #ff5252;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .rtl {
+            direction: rtl;
+            text-align: right;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+        }
+        
+        .lang-switch {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .lang-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        
+        .lang-btn:hover {
+            background: var(--primary);
+        }
+        
+        .warning {
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid var(--error);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .tab-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn:hover, .tab-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .card h3 {
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .result pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .result.success {
+            border-color: var(--success);
+        }
+        
+        .result.error {
+            border-color: var(--error);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s;
+        }
+        
+        .download-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: var(--success);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+        
+        .download-link:hover {
+            opacity: 0.9;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab-btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="lang-switch">
+        <button class="lang-btn" onclick="toggleLang()">
+            <span id="lang-text">فارسی</span>
+        </button>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1>🎬 <span data-en="YouTube Downloader API" data-fa="API دانلودر یوتیوب">YouTube Downloader API</span></h1>
+            <p class="subtitle" data-en="Test all API endpoints interactively" data-fa="تست تعاملی تمام نقاط پایانی API">Test all API endpoints interactively</p>
+        </header>
+        
+        <div class="warning">
+            <strong data-en="⚠️ Legal Disclaimer:" data-fa="⚠️ اخطار حقوقی:">⚠️ Legal Disclaimer:</strong>
+            <span data-en="This tool is for personal, educational use only. Downloading copyrighted content may violate YouTube's Terms of Service and copyright laws. Use responsibly." data-fa="این ابزار فقط برای استفاده شخصی و آموزشی است. دانلود محتوای دارای حق نشر ممکن است قوانین یوتیوب و حق نشر را نقض کند. مسئولانه استفاده کنید.">This tool is for personal, educational use only. Downloading copyrighted content may violate YouTube's Terms of Service and copyright laws. Use responsibly.</span>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('info')" data-en="Video Info" data-fa="اطلاعات ویدیو">Video Info</button>
+            <button class="tab-btn" onclick="showTab('formats')" data-en="Formats" data-fa="فرمت‌ها">Formats</button>
+            <button class="tab-btn" onclick="showTab('download')" data-en="Download" data-fa="دانلود">Download</button>
+            <button class="tab-btn" onclick="showTab('playlist')" data-en="Playlist" data-fa="لیست پخش">Playlist</button>
+            <button class="tab-btn" onclick="showTab('subtitles')" data-en="Subtitles" data-fa="زیرنویس">Subtitles</button>
+            <button class="tab-btn" onclick="showTab('thumbnail')" data-en="Thumbnail" data-fa="تصویر بندانگشتی">Thumbnail</button>
+        </div>
+        
+        <div id="info" class="tab-content active">
+            <div class="card">
+                <h3 data-en="Get Video Information" data-fa="دریافت اطلاعات ویدیو">Get Video Information</h3>
+                <div class="form-group">
+                    <label data-en="YouTube URL" data-fa="آدرس یوتیوب">YouTube URL</label>
+                    <input type="text" id="info-url" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <button class="btn" onclick="getInfo()" data-en="Get Info" data-fa="دریافت اطلاعات">Get Info</button>
+                <div class="loading" id="info-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Loading..." data-fa="در حال بارگذاری...">Loading...</span>
+                </div>
+                <div class="result" id="info-result"></div>
+            </div>
+        </div>
+        
+        <div id="formats" class="tab-content">
+            <div class="card">
+                <h3 data-en="Get Available Formats" data-fa="دریافت فرمت‌های موجود">Get Available Formats</h3>
+                <div class="form-group">
+                    <label data-en="YouTube URL" data-fa="آدرس یوتیوب">YouTube URL</label>
+                    <input type="text" id="formats-url" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <button class="btn" onclick="getFormats()" data-en="Get Formats" data-fa="دریافت فرمت‌ها">Get Formats</button>
+                <div class="loading" id="formats-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Loading..." data-fa="در حال بارگذاری...">Loading...</span>
+                </div>
+                <div class="result" id="formats-result"></div>
+            </div>
+        </div>
+        
+        <div id="download" class="tab-content">
+            <div class="card">
+                <h3 data-en="Download Video" data-fa="دانلود ویدیو">Download Video</h3>
+                <div class="form-group">
+                    <label data-en="YouTube URL" data-fa="آدرس یوتیوب">YouTube URL</label>
+                    <input type="text" id="download-url" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <div class="form-group">
+                    <label data-en="Quality" data-fa="کیفیت">Quality</label>
+                    <select id="download-quality">
+                        <option value="best">Best</option>
+                        <option value="1080p">1080p</option>
+                        <option value="720p">720p</option>
+                        <option value="480p">480p</option>
+                        <option value="worst">Worst</option>
+                        <option value="audio_only">Audio Only</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-en="Type" data-fa="نوع">Type</label>
+                    <select id="download-type">
+                        <option value="video">Video</option>
+                        <option value="audio">Audio</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-en="Audio Format (for audio downloads)" data-fa="فرمت صدا (برای دانلود صدا)">Audio Format (for audio downloads)</label>
+                    <select id="download-audio-format">
+                        <option value="best">Best</option>
+                        <option value="mp3">MP3</option>
+                        <option value="m4a">M4A</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="startDownload()" data-en="Start Download" data-fa="شروع دانلود">Start Download</button>
+                <div class="loading" id="download-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Downloading..." data-fa="در حال دانلود...">Downloading...</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="download-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="result" id="download-result"></div>
+            </div>
+        </div>
+        
+        <div id="playlist" class="tab-content">
+            <div class="card">
+                <h3 data-en="Playlist Operations" data-fa="عملیات لیست پخش">Playlist Operations</h3>
+                <div class="form-group">
+                    <label data-en="Playlist URL" data-fa="آدرس لیست پخش">Playlist URL</label>
+                    <input type="text" id="playlist-url" placeholder="https://www.youtube.com/playlist?list=...">
+                </div>
+                <button class="btn" onclick="getPlaylistInfo()" style="margin-right: 10px;" data-en="Get Playlist Info" data-fa="دریافت اطلاعات لیست پخش">Get Playlist Info</button>
+                <div class="loading" id="playlist-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Loading..." data-fa="در حال بارگذاری...">Loading...</span>
+                </div>
+                <div class="result" id="playlist-result"></div>
+            </div>
+        </div>
+        
+        <div id="subtitles" class="tab-content">
+            <div class="card">
+                <h3 data-en="Get Subtitles" data-fa="دریافت زیرنویس">Get Subtitles</h3>
+                <div class="form-group">
+                    <label data-en="YouTube URL" data-fa="آدرس یوتیوب">YouTube URL</label>
+                    <input type="text" id="subtitles-url" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <div class="form-group">
+                    <label data-en="Language (e.g., en, fa, all)" data-fa="زبان (مثلا en, fa, all)">Language (e.g., en, fa, all)</label>
+                    <input type="text" id="subtitles-lang" value="all">
+                </div>
+                <button class="btn" onclick="getSubtitles()" data-en="Get Subtitles" data-fa="دریافت زیرنویس">Get Subtitles</button>
+                <div class="loading" id="subtitles-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Loading..." data-fa="در حال بارگذاری...">Loading...</span>
+                </div>
+                <div class="result" id="subtitles-result"></div>
+            </div>
+        </div>
+        
+        <div id="thumbnail" class="tab-content">
+            <div class="card">
+                <h3 data-en="Get Thumbnail" data-fa="دریافت تصویر بندانگشتی">Get Thumbnail</h3>
+                <div class="form-group">
+                    <label data-en="YouTube URL" data-fa="آدرس یوتیوب">YouTube URL</label>
+                    <input type="text" id="thumbnail-url" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <div class="form-group">
+                    <label data-en="Quality" data-fa="کیفیت">Quality</label>
+                    <select id="thumbnail-quality">
+                        <option value="maxres">Max Resolution</option>
+                        <option value="hq">High Quality</option>
+                        <option value="mq">Medium Quality</option>
+                        <option value="sd">Standard</option>
+                        <option value="default">Default</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="getThumbnail()" data-en="Get Thumbnail" data-fa="دریافت تصویر">Get Thumbnail</button>
+                <div class="loading" id="thumbnail-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Loading..." data-fa="در حال بارگذاری...">Loading...</span>
+                </div>
+                <div class="result" id="thumbnail-result"></div>
+            </div>
+        </div>
+        
+        <footer>
+            <p data-en="YouTube Downloader API v1.0 - Powered by yt-dlp" data-fa="API دانلودر یوتیوب نسخه 1.0 - با قدرت yt-dlp">YouTube Downloader API v1.0 - Powered by yt-dlp</p>
+            <p><a href="/docs" style="color: var(--primary);" data-en="API Documentation (Swagger)" data-fa="مستندات API (Swagger)">API Documentation (Swagger)</a></p>
+        </footer>
+    </div>
+    
+    <script>
+        let currentLang = 'en';
+        const API_BASE = '';
+        
+        function toggleLang() {
+            currentLang = currentLang === 'en' ? 'fa' : 'en';
+            document.getElementById('lang-text').textContent = currentLang === 'en' ? 'فارسی' : 'English';
+            document.body.classList.toggle('rtl', currentLang === 'fa');
+            document.documentElement.lang = currentLang;
+            document.documentElement.dir = currentLang === 'fa' ? 'rtl' : 'ltr';
+            
+            document.querySelectorAll('[data-en]').forEach(el => {
+                el.textContent = el.getAttribute(`data-${currentLang}`);
+            });
+        }
+        
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        function showLoading(id, show) {
+            document.getElementById(`${id}-loading`).classList.toggle('show', show);
+        }
+        
+        function showResult(id, data, isError = false) {
+            const resultEl = document.getElementById(`${id}-result`);
+            resultEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            resultEl.className = `result ${isError ? 'error' : 'success'}`;
+        }
+        
+        async function apiCall(endpoint, options = {}) {
+            const response = await fetch(`${API_BASE}${endpoint}`, options);
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || 'API Error');
+            }
+            return data;
+        }
+        
+        async function getInfo() {
+            const url = document.getElementById('info-url').value;
+            if (!url) return alert(currentLang === 'en' ? 'Please enter a URL' : 'لطفا آدرس را وارد کنید');
+            
+            showLoading('info', true);
+            try {
+                const data = await apiCall(`/info?url=${encodeURIComponent(url)}`);
+                showResult('info', data);
+            } catch (e) {
+                showResult('info', { error: e.message }, true);
+            }
+            showLoading('info', false);
+        }
+        
+        async function getFormats() {
+            const url = document.getElementById('formats-url').value;
+            if (!url) return alert(currentLang === 'en' ? 'Please enter a URL' : 'لطفا آدرس را وارد کنید');
+            
+            showLoading('formats', true);
+            try {
+                const data = await apiCall(`/formats?url=${encodeURIComponent(url)}`);
+                showResult('formats', data);
+            } catch (e) {
+                showResult('formats', { error: e.message }, true);
+            }
+            showLoading('formats', false);
+        }
+        
+        async function startDownload() {
+            const url = document.getElementById('download-url').value;
+            if (!url) return alert(currentLang === 'en' ? 'Please enter a URL' : 'لطفا آدرس را وارد کنید');
+            
+            const quality = document.getElementById('download-quality').value;
+            const type = document.getElementById('download-type').value;
+            const audioFormat = document.getElementById('download-audio-format').value;
+            
+            showLoading('download', true);
+            document.getElementById('download-progress').style.width = '0%';
+            
+            try {
+                const data = await apiCall('/download/single', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, quality, type, audio_format: audioFormat })
+                });
+                
+                pollJobStatus(data.job_id, 'download');
+            } catch (e) {
+                showResult('download', { error: e.message }, true);
+                showLoading('download', false);
+            }
+        }
+        
+        async function pollJobStatus(jobId, resultId) {
+            try {
+                const data = await apiCall(`/status/${jobId}`);
+                document.getElementById('download-progress').style.width = `${data.progress}%`;
+                
+                if (data.status === 'completed') {
+                    showLoading(resultId, false);
+                    let html = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    if (data.files && data.files.length > 0) {
+                        html += '<div style="margin-top: 15px;">';
+                        data.files.forEach(file => {
+                            html += `<a href="${file.download_url}" class="download-link" download>${currentLang === 'en' ? 'Download' : 'دانلود'}: ${file.filename}</a><br><br>`;
+                        });
+                        html += '</div>';
+                    }
+                    document.getElementById(`${resultId}-result`).innerHTML = html;
+                    document.getElementById(`${resultId}-result`).className = 'result success';
+                } else if (data.status === 'failed') {
+                    showLoading(resultId, false);
+                    showResult(resultId, data, true);
+                } else {
+                    setTimeout(() => pollJobStatus(jobId, resultId), 2000);
+                }
+            } catch (e) {
+                showLoading(resultId, false);
+                showResult(resultId, { error: e.message }, true);
+            }
+        }
+        
+        async function getPlaylistInfo() {
+            const url = document.getElementById('playlist-url').value;
+            if (!url) return alert(currentLang === 'en' ? 'Please enter a URL' : 'لطفا آدرس را وارد کنید');
+            
+            showLoading('playlist', true);
+            try {
+                const data = await apiCall(`/download/playlist/info?url=${encodeURIComponent(url)}`);
+                showResult('playlist', data);
+            } catch (e) {
+                showResult('playlist', { error: e.message }, true);
+            }
+            showLoading('playlist', false);
+        }
+        
+        async function getSubtitles() {
+            const url = document.getElementById('subtitles-url').value;
+            const lang = document.getElementById('subtitles-lang').value;
+            if (!url) return alert(currentLang === 'en' ? 'Please enter a URL' : 'لطفا آدرس را وارد کنید');
+            
+            showLoading('subtitles', true);
+            try {
+                const data = await apiCall(`/subtitles?url=${encodeURIComponent(url)}&lang=${encodeURIComponent(lang)}`);
+                showResult('subtitles', data);
+            } catch (e) {
+                showResult('subtitles', { error: e.message }, true);
+            }
+            showLoading('subtitles', false);
+        }
+        
+        async function getThumbnail() {
+            const url = document.getElementById('thumbnail-url').value;
+            const quality = document.getElementById('thumbnail-quality').value;
+            if (!url) return alert(currentLang === 'en' ? 'Please enter a URL' : 'لطفا آدرس را وارد کنید');
+            
+            showLoading('thumbnail', true);
+            try {
+                const data = await apiCall(`/thumbnail?url=${encodeURIComponent(url)}&quality=${quality}`);
+                let html = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                if (data.thumbnail_url) {
+                    html += `<div style="margin-top: 15px;"><img src="${data.thumbnail_url}" style="max-width: 100%; border-radius: 8px;" alt="Thumbnail"></div>`;
+                }
+                document.getElementById('thumbnail-result').innerHTML = html;
+                document.getElementById('thumbnail-result').className = 'result success';
+            } catch (e) {
+                showResult('thumbnail', { error: e.message }, true);
+            }
+            showLoading('thumbnail', false);
+        }
+    </script>
+</body>
+</html>
