@@ -1,0 +1,26 @@
+Additionally, incorporate the following improvements and best practices based on current (2025) yt-dlp developments and common secure implementation patterns for YouTube downloader APIs:
+
+- Use the latest yt-dlp features: Ensure the code supports the required external JavaScript runtime (e.g., Deno or Node.js) for full YouTube compatibility if needed, but note it in setup instructions as optional for local use.
+- Secure file handling: Use FastAPI's FileResponse or StreamingResponse for downloads to stream files efficiently without loading entire files into memory. Serve downloaded files from a temporary directory (e.g., /tmp/downloads) with unique filenames (use UUIDs to avoid conflicts). Implement automatic cleanup: delete files after a timeout (e.g., 30 minutes) using background tasks or a scheduler.
+- For playlists: When downloading multiple files, provide a list of individual download links instead of a single ZIP (to avoid memory issues with large playlists). Optionally, add an endpoint to generate a temporary ZIP if requested.
+- Rate limiting and abuse prevention: Add simple rate limiting (e.g., using slowapi or a basic in-memory dict) to prevent abuse (limit downloads per IP).
+- Background downloads: For long downloads (especially playlists), use FastAPI BackgroundTasks to download in the background and return a job ID with a /status/{job_id} endpoint to check progress and get the download link when ready.
+- Simple testing UI: Mount a static folder with a clean HTML/JS frontend (index.html) at '/' or '/ui' that allows testing all endpoints interactively (forms for URL input, quality selection, etc.). Make it responsive and bilingual (English/Persian switches via JS).
+- Bilingual documentation: Include two Markdown files in the output:
+  - README_EN.md: Full English readme with setup, usage, and warnings.
+  - README_FA.md: Complete Persian translation of the readme (translate accurately).
+  - API_DOCS_EN.md and API_DOCS_FA.md: Detailed endpoint docs with examples in both languages.
+- Legal and ethical disclaimer: Add prominent warnings in the code comments, READMEs, and UI:
+  "This tool is for personal, educational use only. Downloading copyrighted content may violate YouTube's Terms of Service and copyright laws in your jurisdiction. Use responsibly and only for content you have rights to download."
+- Error handling enhancements: Gracefully handle age-restricted, private, geo-blocked, or live videos. Return clear JSON error messages.
+- Dependencies: Include ffmpeg in requirements for MP3 conversion and merging. Add slowapi for rate limiting if used.
+- Docker support: Optionally include a simple Dockerfile and docker-compose.yml for easy deployment.
+
+The output JSON should now include additional keys:
+- "ui_code": Full HTML/JS code for the simple testing UI (in a static folder structure)
+- "readme_en": Content of README_EN.md
+- "readme_fa": Content of README_FA.md (accurate Persian translation)
+- "api_docs_en" and "api_docs_fa": Detailed docs
+- "docker_files": Dockerfile and docker-compose.yml code
+
+Make the entire project ready for local testing and safe personal use.

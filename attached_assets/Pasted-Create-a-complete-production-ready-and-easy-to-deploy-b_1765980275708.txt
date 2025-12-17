@@ -1,0 +1,63 @@
+Create a complete, production-ready, and easy-to-deploy backend API for a modern YouTube Downloader project, entirely powered by the yt-dlp Python library. Use FastAPI for the web framework due to its simplicity, speed, and automatic OpenAPI docs. The API must focus exclusively on YouTube (single videos and playlists).
+
+Output your entire response as a single, well-structured JSON object with these keys:
+- "description": brief project overview
+- "requirements": list of pip packages needed
+- "setup_instructions": step-by-step guide to run the API locally
+- "code": full executable Python code (main.py) with all imports, routes, and logic
+- "endpoints": detailed documentation for every endpoint (method, path, parameters, response example)
+
+Core requirements:
+- Extremely easy setup: only pip install dependencies + uvicorn main:app --reload
+- Handle both single videos and playlists intelligently
+- Use yt-dlp for all extraction and downloading
+- Temporary file storage with cleanup (or streaming where possible)
+- Proper error handling and validation
+- Enable CORS for frontend integration
+- Support both audio and video downloads
+
+The API must have these endpoints:
+
+1. GET /info
+   - Query params: url (required)
+   - Returns rich metadata: title, description, duration, view_count, upload_date, channel_name, channel_subscribers (if available), thumbnail_url (highest quality), available formats summary
+   - Works for both single video and playlist (returns list of videos if playlist)
+
+2. GET /formats
+   - Query params: url (required)
+   - Returns full list of available formats with: format_id, ext, resolution, fps, vcodec, acodec, filesize_approx, quality note
+   - Group or clearly separate video, audio, and combined formats
+
+3. POST /download/single
+   - Body params: url (required), quality (optional: "best", "worst", "audio_only", "720p", "1080p", "1440p", "4k"), format_id (optional, overrides quality), type (optional: "video", "audio", "both" default), audio_format (optional: "mp3", "m4a", "best")
+   - Smart format selection: if quality is given (e.g., "720p"), use yt-dlp format string like "bestvideo[height<=720]+bestaudio" 
+   - If audio_format="mp3", use post-processing with ffmpeg to convert to mp3
+   - Returns download link(s) or streams the file(s)
+
+4. Playlist endpoints (nested under /download/playlist):
+   - GET /download/playlist/info → url → returns list of videos with index, title, duration, thumbnail, video_id
+   - POST /download/playlist/all → url, quality, type, audio_format → downloads entire playlist (return zip or list of links)
+   - POST /download/playlist/select → url, video_indices (list of ints), quality, type, audio_format → downloads selected videos
+
+New required endpoints:
+
+5. GET/POST /subtitles
+   - Params: url (required), lang (optional: "en", "fa", "all", etc.), auto (boolean, default false for auto-generated subs)
+   - If lang="all", list all available subtitle languages with download links
+   - Otherwise, download and return the subtitle file (SRT or VTT) as text or file attachment
+   - Use yt-dlp --write-subs --write-auto-subs --sub-langs
+
+6. GET /thumbnail
+   - Query params: url (required), quality (optional: "maxres", "hq", "mq", "sd", "default" – default to highest available)
+   - Returns redirect to thumbnail URL or downloads and serves the image directly
+   - Use yt-dlp's thumbnail extraction (maxresdefault, hqdefault, etc.)
+
+Additional improvements:
+- In all download endpoints (/single and /playlist/*), support audio_format="mp3" which triggers ffmpeg post-processing to convert audio to MP3 (use -x --audio-format mp3 in yt-dlp)
+- Allow users to choose quality like "best", "worst", "audio_only", or specific resolution (e.g., "1080p") instead of requiring format_id
+- If both quality and format_id are provided, format_id takes priority
+- Make the API user-friendly: prioritize human-readable options over raw format_ids
+
+Ensure the code is clean, commented, handles errors gracefully (e.g., invalid URL, age-restricted, private video), and works reliably with current YouTube changes (thanks to yt-dlp updates).
+
+Include example usage in the endpoints documentation.
