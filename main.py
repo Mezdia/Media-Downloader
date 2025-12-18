@@ -8,6 +8,8 @@ may violate YouTube/Instagram Terms of Service and copyright laws in your jurisd
 Use responsibly and only for content you have rights to download.
 """
 
+# Designed by Mezd and powered by Mezdia.
+
 import os
 import re
 import uuid

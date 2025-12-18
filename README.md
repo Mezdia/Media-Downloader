@@ -1,13 +1,16 @@
-# YouTube Downloader API
+# YouTube & Instagram Downloader API
 
-A production-ready FastAPI backend for downloading YouTube videos, audio, subtitles, and thumbnails powered by yt-dlp.
+Designed by Mezd and powered by Mezdia.
+
+A production-ready FastAPI backend for downloading YouTube videos and Instagram content (posts, reels, stories) powered by yt-dlp.
 
 ## Legal Disclaimer
 
-**⚠️ IMPORTANT:** This tool is for personal, educational use only. Downloading copyrighted content may violate YouTube's Terms of Service and copyright laws in your jurisdiction. Use responsibly and only for content you have rights to download.
+**⚠️ IMPORTANT:** This tool is for personal, educational use only. Downloading copyrighted content may violate YouTube/Instagram Terms of Service and copyright laws in your jurisdiction. Use responsibly and only for content you have rights to download.
 
 ## Features
 
+### YouTube Features
 - **Video Information**: Get detailed metadata for any YouTube video or playlist
 - **Format Listing**: View all available formats (video, audio, combined)
 - **Video Download**: Download videos in various qualities (best, 720p, 1080p, 1440p, 4k)
@@ -18,6 +21,16 @@ A production-ready FastAPI backend for downloading YouTube videos, audio, subtit
 - **Background Processing**: Long downloads run in background with progress tracking
 - **Rate Limiting**: Built-in protection against API abuse
 - **Bilingual UI**: Interactive testing interface in English and Persian
+
+### Instagram Features
+- **Post Information**: Get detailed metadata for Instagram posts (images, videos, carousels)
+- **Reel Information**: Extract reel metadata, engagement stats, and available formats
+- **Story Information**: Check active stories from Instagram profiles
+- **Profile Information**: Get profile details and recent posts
+- **Content Download**: Download posts, reels, stories, and carousels
+- **Batch Downloads**: Download multiple Instagram items simultaneously
+- **ZIP Export**: Download carousels and story collections as ZIP files
+- **Statistics**: Get engagement metrics for posts and reels
 
 ## Requirements
 
@@ -61,7 +74,9 @@ uvicorn main:app --host 0.0.0.0 --port 5000 --reload
 
 ## API Endpoints
 
-### GET /info
+### YouTube Endpoints
+
+#### GET /info
 Get video or playlist information.
 
 **Parameters:**
@@ -72,7 +87,7 @@ Get video or playlist information.
 curl "http://localhost:5000/info?url=https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-### GET /formats
+#### GET /formats
 Get available formats for a video.
 
 **Parameters:**
@@ -83,7 +98,7 @@ Get available formats for a video.
 curl "http://localhost:5000/formats?url=https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-### POST /download/single
+#### POST /download/single
 Download a single video or audio file.
 
 **Body Parameters:**
@@ -100,7 +115,7 @@ curl -X POST "http://localhost:5000/download/single" \
   -d '{"url": "https://www.youtube.com/watch?v=VIDEO_ID", "quality": "720p"}'
 ```
 
-### GET /status/{job_id}
+#### GET /status/{job_id}
 Check download progress.
 
 **Example:**
@@ -108,19 +123,19 @@ Check download progress.
 curl "http://localhost:5000/status/YOUR_JOB_ID"
 ```
 
-### GET /download/file/{filename}
+#### GET /download/file/{filename}
 Download processed file.
 
-### GET /download/playlist/info
+#### GET /download/playlist/info
 Get playlist information.
 
 **Parameters:**
 - `url` (required): YouTube playlist URL
 
-### POST /download/playlist/all
+#### POST /download/playlist/all
 Download all videos from a playlist.
 
-### POST /download/playlist/select
+#### POST /download/playlist/select
 Download selected videos from a playlist.
 
 **Body Parameters:**
@@ -128,14 +143,14 @@ Download selected videos from a playlist.
 - `video_indices`: List of video indices to download
 - `quality`, `type`, `audio_format`: Same as single download
 
-### GET /subtitles
+#### GET /subtitles
 Get available subtitles.
 
 **Parameters:**
 - `url` (required): YouTube video URL
 - `lang`: Language code ("en", "fa", "all", etc.)
 
-### POST /subtitles
+#### POST /subtitles
 Download subtitles file.
 
 **Body Parameters:**
@@ -143,12 +158,111 @@ Download subtitles file.
 - `lang`: Language code
 - `auto`: Include auto-generated subtitles (boolean)
 
-### GET /thumbnail
+#### GET /thumbnail
 Get video thumbnail.
 
 **Parameters:**
 - `url` (required): YouTube video URL
 - `quality`: "maxres", "hq", "mq", "sd", "default"
+
+### Instagram Endpoints
+
+#### GET /instagram/post/info
+Get Instagram post information.
+
+**Parameters:**
+- `url` (required): Instagram post URL or shortcode
+
+**Example:**
+```bash
+curl "http://localhost:5000/instagram/post/info?url=https://www.instagram.com/p/POST_CODE/"
+```
+
+#### GET /instagram/reel/info
+Get Instagram reel information.
+
+**Parameters:**
+- `url` (required): Instagram reel URL or shortcode
+
+#### GET /instagram/story/info
+Get Instagram story information.
+
+**Parameters:**
+- `username` (required): Instagram username
+
+#### GET /instagram/profile/info
+Get Instagram profile information.
+
+**Parameters:**
+- `username` (required): Instagram username
+
+#### GET /instagram/profile/posts
+Get Instagram profile posts.
+
+**Parameters:**
+- `username` (required): Instagram username
+- `limit`: Number of posts to return (1-50, default: 12)
+
+#### POST /instagram/download/post
+Download Instagram post.
+
+**Body Parameters:**
+- `url` (required): Instagram post URL or shortcode
+- `quality`: "best", "medium", "low"
+- `download_type`: "media", "video_only", "image_only"
+
+#### POST /instagram/download/reel
+Download Instagram reel.
+
+**Body Parameters:**
+- `url` (required): Instagram reel URL or shortcode
+- `quality`: "best", "1080p", "720p", "480p"
+- `download_type`: "video", "audio_only"
+- `audio_format`: "best", "mp3", "m4a"
+
+#### POST /instagram/download/story
+Download Instagram stories.
+
+**Body Parameters:**
+- `username` (required): Instagram username
+- `quality`: "best", "high", "medium", "low"
+- `format`: "individual", "zip"
+
+#### POST /instagram/download/carousel
+Download Instagram carousel as ZIP.
+
+**Body Parameters:**
+- `url` (required): Instagram carousel post URL
+- `quality`: "best", "high", "medium", "low"
+- `include_metadata`: Include metadata.json in ZIP
+
+#### POST /instagram/download/batch
+Batch download Instagram content.
+
+**Body Parameters:**
+- `items`: List of items to download
+- `items[].url`: URL or shortcode
+- `items[].type`: "post", "reel", "story"
+- `quality`: Quality preference
+- `continue_on_error`: Continue if individual download fails
+
+#### GET /instagram/status/{job_id}
+Check Instagram download status.
+
+#### GET /instagram/download/file/{filename}
+Download Instagram file.
+
+#### GET /instagram/post/stats
+Get Instagram post statistics.
+
+**Parameters:**
+- `url` (required): Instagram post URL or shortcode
+
+#### GET /instagram/reel/stats
+Get Instagram reel statistics.
+
+**Parameters:**
+- `url` (required): Instagram reel URL or shortcode
 
 ## Configuration
 
@@ -161,8 +275,8 @@ Environment variables:
 The API returns appropriate HTTP status codes:
 - `200`: Success
 - `400`: Bad request (invalid URL, etc.)
-- `403`: Forbidden (private video, age-restricted)
-- `404`: Not found (video unavailable)
+- `403`: Forbidden (private content, age-restricted)
+- `404`: Not found (content unavailable)
 - `429`: Rate limit exceeded
 - `500`: Internal server error
 
