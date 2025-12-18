@@ -8,6 +8,7 @@
 
     <!-- CSS -->
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Favicon -->
     <link rel="icon"
@@ -43,13 +44,38 @@
         <main class="main-content">
             <!-- Sidebar (Features) -->
             <aside class="sidebar">
-                <div class="nav-item active">
+                <div class="nav-item active" data-feature="video">
+                    <i class="fas fa-video"></i>
                     <span data-i18n="video">Video</span>
                 </div>
-                <div class="nav-item">
+                <div class="nav-item" data-feature="playlist">
+                    <i class="fas fa-list"></i>
                     <span data-i18n="playlist">Playlist</span>
                 </div>
-                <!-- Add more nav items as we implement features -->
+                <div class="nav-item" data-feature="formats">
+                    <i class="fas fa-cog"></i>
+                    <span data-i18n="formats">Formats</span>
+                </div>
+                <div class="nav-item" data-feature="subtitles">
+                    <i class="fas fa-closed-captioning"></i>
+                    <span data-i18n="subtitles">Subtitles</span>
+                </div>
+                <div class="nav-item" data-feature="thumbnail">
+                    <i class="fas fa-image"></i>
+                    <span data-i18n="thumbnail">Thumbnail</span>
+                </div>
+                <div class="nav-item" data-feature="batch">
+                    <i class="fas fa-layer-group"></i>
+                    <span data-i18n="batch">Batch</span>
+                </div>
+                <div class="nav-item" data-feature="jobs">
+                    <i class="fas fa-tasks"></i>
+                    <span data-i18n="jobs">Jobs</span>
+                </div>
+                <div class="nav-item" data-feature="stream">
+                    <i class="fas fa-stream"></i>
+                    <span data-i18n="stream">Stream</span>
+                </div>
             </aside>
 
             <!-- Content Area -->
@@ -58,25 +84,268 @@
                 <!-- YouTube Section -->
                 <div id="section-youtube" class="panel-section active">
                     <h2 data-i18n="youtube">YouTube</h2>
-                    <div class="form-group">
-                        <label for="yt-url" data-i18n="enterUrl">Enter URL here...</label>
-                        <input type="text" id="yt-url" placeholder="https://youtube.com/watch?v=...">
+                    
+                    <!-- Video Info Tab -->
+                    <div id="feature-video" class="feature-section active">
+                        <div class="form-group">
+                            <label for="yt-url" data-i18n="enterUrl">Enter URL here...</label>
+                            <input type="text" id="yt-url" placeholder="https://youtube.com/watch?v=...">
+                        </div>
+                        <div class="button-group">
+                            <button id="btn-yt-info" class="action-btn">
+                                <i class="fas fa-info-circle"></i>
+                                <span data-i18n="getInfo">Get Info</span>
+                            </button>
+                            <button id="btn-yt-formats" class="action-btn secondary">
+                                <i class="fas fa-cog"></i>
+                                <span data-i18n="getFormats">Get Formats</span>
+                            </button>
+                        </div>
                     </div>
-                    <button id="btn-yt-info" class="action-btn">
-                        <span data-i18n="getInfo">Get Info</span>
-                    </button>
+
+                    <!-- Playlist Tab -->
+                    <div id="feature-playlist" class="feature-section">
+                        <div class="form-group">
+                            <label for="yt-playlist-url" data-i18n="enterPlaylistUrl">Enter Playlist URL...</label>
+                            <input type="text" id="yt-playlist-url" placeholder="https://youtube.com/playlist?list=...">
+                        </div>
+                        <div class="button-group">
+                            <button id="btn-yt-playlist-info" class="action-btn">
+                                <i class="fas fa-info-circle"></i>
+                                <span data-i18n="getInfo">Get Info</span>
+                            </button>
+                            <button id="btn-yt-playlist-download" class="action-btn secondary">
+                                <i class="fas fa-download"></i>
+                                <span data-i18n="downloadAll">Download All</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Formats Tab -->
+                    <div id="feature-formats" class="feature-section">
+                        <div class="form-group">
+                            <label for="yt-formats-url" data-i18n="enterUrl">Enter Video URL...</label>
+                            <input type="text" id="yt-formats-url" placeholder="https://youtube.com/watch?v=...">
+                        </div>
+                        <button id="btn-yt-get-formats" class="action-btn">
+                            <i class="fas fa-cog"></i>
+                            <span data-i18n="getFormats">Get Formats</span>
+                        </button>
+                    </div>
+
+                    <!-- Subtitles Tab -->
+                    <div id="feature-subtitles" class="feature-section">
+                        <div class="form-group">
+                            <label for="yt-subtitles-url" data-i18n="enterUrl">Enter Video URL...</label>
+                            <input type="text" id="yt-subtitles-url" placeholder="https://youtube.com/watch?v=...">
+                        </div>
+                        <div class="form-group">
+                            <label for="yt-subtitles-lang" data-i18n="language">Language</label>
+                            <select id="yt-subtitles-lang">
+                                <option value="all">All Languages</option>
+                                <option value="en">English</option>
+                                <option value="fa">Persian</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="de">German</option>
+                            </select>
+                        </div>
+                        <button id="btn-yt-get-subtitles" class="action-btn">
+                            <i class="fas fa-closed-captioning"></i>
+                            <span data-i18n="getSubtitles">Get Subtitles</span>
+                        </button>
+                    </div>
+
+                    <!-- Thumbnail Tab -->
+                    <div id="feature-thumbnail" class="feature-section">
+                        <div class="form-group">
+                            <label for="yt-thumbnail-url" data-i18n="enterUrl">Enter Video URL...</label>
+                            <input type="text" id="yt-thumbnail-url" placeholder="https://youtube.com/watch?v=...">
+                        </div>
+                        <div class="form-group">
+                            <label for="yt-thumbnail-quality" data-i18n="quality">Quality</label>
+                            <select id="yt-thumbnail-quality">
+                                <option value="maxres">Max Resolution</option>
+                                <option value="hq">High Quality</option>
+                                <option value="mq">Medium Quality</option>
+                                <option value="sd">Standard</option>
+                                <option value="default">Default</option>
+                            </select>
+                        </div>
+                        <button id="btn-yt-get-thumbnail" class="action-btn">
+                            <i class="fas fa-image"></i>
+                            <span data-i18n="getThumbnail">Get Thumbnail</span>
+                        </button>
+                    </div>
+
+                    <!-- Batch Download Tab -->
+                    <div id="feature-batch" class="feature-section">
+                        <div class="form-group">
+                            <label for="yt-batch-urls" data-i18n="enterUrls">Enter URLs (one per line, max 10)</label>
+                            <textarea id="yt-batch-urls" rows="5" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="yt-batch-quality" data-i18n="quality">Quality</label>
+                            <select id="yt-batch-quality">
+                                <option value="best">Best</option>
+                                <option value="720p">720p</option>
+                                <option value="1080p">1080p</option>
+                                <option value="audio_only">Audio Only</option>
+                            </select>
+                        </div>
+                        <button id="btn-yt-batch-download" class="action-btn">
+                            <i class="fas fa-download"></i>
+                            <span data-i18n="startBatch">Start Batch Download</span>
+                        </button>
+                    </div>
+
+                    <!-- Jobs Tab -->
+                    <div id="feature-jobs" class="feature-section">
+                        <div class="jobs-controls">
+                            <div class="form-group">
+                                <label for="jobs-filter" data-i18n="filterJobs">Filter Jobs</label>
+                                <select id="jobs-filter">
+                                    <option value="all">All Jobs</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="processing">Processing</option>
+                                    <option value="failed">Failed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <button id="btn-refresh-jobs" class="action-btn secondary">
+                                <i class="fas fa-sync-alt"></i>
+                                <span data-i18n="refresh">Refresh</span>
+                            </button>
+                        </div>
+                        <div id="jobs-list" class="jobs-list"></div>
+                    </div>
+
+                    <!-- Stream Tab -->
+                    <div id="feature-stream" class="feature-section">
+                        <div class="form-group">
+                            <label for="yt-stream-url" data-i18n="enterUrl">Enter Video URL...</label>
+                            <input type="text" id="yt-stream-url" placeholder="https://youtube.com/watch?v=...">
+                        </div>
+                        <div class="form-group">
+                            <label for="yt-stream-quality" data-i18n="quality">Quality</label>
+                            <select id="yt-stream-quality">
+                                <option value="best">Best</option>
+                                <option value="720p">720p</option>
+                                <option value="1080p">1080p</option>
+                            </select>
+                        </div>
+                        <button id="btn-yt-stream" class="action-btn">
+                            <i class="fas fa-play"></i>
+                            <span data-i18n="startStream">Start Stream</span>
+                        </button>
+                        <div id="stream-player" class="stream-player-container" style="display: none; margin-top: 1rem;">
+                            <video id="video-stream" width="100%" height="400" controls style="border-radius: var(--radius-md); background: #000;"></video>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Instagram Section -->
                 <div id="section-instagram" class="panel-section">
                     <h2 data-i18n="instagram">Instagram</h2>
-                    <div class="form-group">
-                        <label for="ig-url" data-i18n="enterUrl">Enter URL here...</label>
-                        <input type="text" id="ig-url" placeholder="https://instagram.com/p/...">
+                    
+                    <!-- Post Tab -->
+                    <div id="feature-ig-post" class="feature-section active">
+                        <div class="form-group">
+                            <label for="ig-post-url" data-i18n="enterUrl">Enter Post URL...</label>
+                            <input type="text" id="ig-post-url" placeholder="https://instagram.com/p/...">
+                        </div>
+                        <div class="button-group">
+                            <button id="btn-ig-post-info" class="action-btn">
+                                <i class="fas fa-info-circle"></i>
+                                <span data-i18n="getInfo">Get Info</span>
+                            </button>
+                            <button id="btn-ig-post-download" class="action-btn secondary">
+                                <i class="fas fa-download"></i>
+                                <span data-i18n="download">Download</span>
+                            </button>
+                        </div>
                     </div>
-                    <button id="btn-ig-info" class="action-btn">
-                        <span data-i18n="getInfo">Get Info</span>
-                    </button>
+
+                    <!-- Reel Tab -->
+                    <div id="feature-ig-reel" class="feature-section">
+                        <div class="form-group">
+                            <label for="ig-reel-url" data-i18n="enterUrl">Enter Reel URL...</label>
+                            <input type="text" id="ig-reel-url" placeholder="https://instagram.com/reel/...">
+                        </div>
+                        <div class="button-group">
+                            <button id="btn-ig-reel-info" class="action-btn">
+                                <i class="fas fa-info-circle"></i>
+                                <span data-i18n="getInfo">Get Info</span>
+                            </button>
+                            <button id="btn-ig-reel-download" class="action-btn secondary">
+                                <i class="fas fa-download"></i>
+                                <span data-i18n="download">Download</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Profile Tab -->
+                    <div id="feature-ig-profile" class="feature-section">
+                        <div class="form-group">
+                            <label for="ig-username" data-i18n="username">Username</label>
+                            <input type="text" id="ig-username" placeholder="instagram">
+                        </div>
+                        <div class="button-group">
+                            <button id="btn-ig-profile-info" class="action-btn">
+                                <i class="fas fa-info-circle"></i>
+                                <span data-i18n="getInfo">Get Info</span>
+                            </button>
+                            <button id="btn-ig-profile-posts" class="action-btn secondary">
+                                <i class="fas fa-images"></i>
+                                <span data-i18n="getPosts">Get Posts</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stories Tab -->
+                    <div id="feature-ig-stories" class="feature-section">
+                        <div class="form-group">
+                            <label for="ig-stories-username" data-i18n="username">Username</label>
+                            <input type="text" id="ig-stories-username" placeholder="instagram">
+                        </div>
+                        <button id="btn-ig-stories-info" class="action-btn">
+                            <i class="fas fa-info-circle"></i>
+                            <span data-i18n="getInfo">Get Stories Info</span>
+                        </button>
+                    </div>
+
+                    <!-- Batch Download Tab -->
+                    <div id="feature-ig-batch" class="feature-section">
+                        <div class="form-group">
+                            <label for="ig-batch-items" data-i18n="batchItems">Batch Items (JSON format)</label>
+                            <textarea id="ig-batch-items" rows="5" placeholder='[{"url": "https://instagram.com/p/...", "type": "post"}]'></textarea>
+                        </div>
+                        <button id="btn-ig-batch-download" class="action-btn">
+                            <i class="fas fa-download"></i>
+                            <span data-i18n="startBatch">Start Batch Download</span>
+                        </button>
+                    </div>
+
+                    <!-- Jobs Tab -->
+                    <div id="feature-ig-jobs" class="feature-section">
+                        <div class="jobs-controls">
+                            <div class="form-group">
+                                <label for="ig-jobs-filter" data-i18n="filterJobs">Filter Jobs</label>
+                                <select id="ig-jobs-filter">
+                                    <option value="all">All Jobs</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="processing">Processing</option>
+                                    <option value="failed">Failed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <button id="btn-ig-refresh-jobs" class="action-btn secondary">
+                                <i class="fas fa-sync-alt"></i>
+                                <span data-i18n="refresh">Refresh</span>
+                            </button>
+                        </div>
+                        <div id="ig-jobs-list" class="jobs-list"></div>
+                    </div>
                 </div>
 
                 <!-- Results Area -->

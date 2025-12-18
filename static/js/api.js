@@ -63,6 +63,20 @@ class Api {
         return this.request(`/status/${jobId}`);
     }
 
+    static async getAllJobs() {
+        return this.request('/jobs');
+    }
+
+    static async cancelJob(jobId) {
+        return this.request(`/jobs/${jobId}/cancel`, {
+            method: 'POST'
+        });
+    }
+
+    static async getStreamUrl(url, quality = 'best') {
+        return this.request(`/stream/video?url=${encodeURIComponent(url)}&quality=${quality}`);
+    }
+
     // --- Instagram Endpoints ---
 
     static async getIgPostInfo(url) {
@@ -77,26 +91,59 @@ class Api {
         return this.request(`/instagram/profile/info?username=${encodeURIComponent(username)}`);
     }
 
+    static async getIgProfilePosts(username, limit = 12) {
+        return this.request(`/instagram/profile/posts?username=${encodeURIComponent(username)}&limit=${limit}`);
+    }
+
     static async getIgStoryInfo(username) {
         return this.request(`/instagram/story/info?username=${encodeURIComponent(username)}`);
     }
 
-    // Instagram Downloads are likely via generic download endpoints or specific ones if they exist.
-    // Based on index.html analysis, IG downloads might use /instagram/download/...
-    // I need to double check main.py for POST endpoints on instagram_router.
-    // Assuming they mirror the get info ones or a generic one. 
-    // From the previous view_file, I saw models for InstagramPostDownloadRequest etc.
-    // I'll assume standard naming conventions or similar to YT.
-
-    static async startIgDownload(endpoint, payload) {
-        return this.request(`/instagram/download/${endpoint}`, {
+    static async startIgPostDownload(payload) {
+        return this.request('/instagram/download/post', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
     }
 
+    static async startIgReelDownload(payload) {
+        return this.request('/instagram/download/reel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    }
+
+    static async startIgBatchDownload(items) {
+        return this.request('/instagram/download/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items })
+        });
+    }
+
     static async getIgJobStatus(jobId) {
         return this.request(`/instagram/status/${jobId}`);
+    }
+
+    static async getAllIgJobs() {
+        return this.request('/instagram/jobs');
+    }
+
+    static async cancelIgJob(jobId) {
+        return this.request(`/instagram/jobs/${jobId}/cancel`, {
+            method: 'POST'
+        });
+    }
+
+    // --- Helper Methods ---
+
+    static async downloadFile(url) {
+        window.open(url, '_blank');
+    }
+
+    static async checkHealth() {
+        return this.request('/health');
     }
 }
