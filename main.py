@@ -1,28 +1,31 @@
 """
-YouTube Downloader API - Production-Ready FastAPI Backend
-Powered by yt-dlp for video/audio extraction and downloading.
+YouTube & Instagram Downloader API - Production-Ready FastAPI Backend
+Powered by yt-dlp for video/audio extraction and downloading from YouTube & Instagram.
 
 LEGAL DISCLAIMER:
 This tool is for personal, educational use only. Downloading copyrighted content
-may violate YouTube's Terms of Service and copyright laws in your jurisdiction.
+may violate YouTube/Instagram Terms of Service and copyright laws in your jurisdiction.
 Use responsibly and only for content you have rights to download.
 """
 
 import os
+import re
 import uuid
 import asyncio
 import time
 import shutil
+import zipfile
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pathlib import Path
 from collections import defaultdict
+from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request, APIRouter
 from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 import yt_dlp
 import aiofiles
 
@@ -30,16 +33,21 @@ import aiofiles
 DOWNLOAD_DIR = Path("tmp/downloads")
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+INSTAGRAM_DOWNLOAD_DIR = Path("tmp/instagram")
+INSTAGRAM_DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
 CLEANUP_TIMEOUT_MINUTES = 30
 MAX_REQUESTS_PER_MINUTE = 30
 
 app = FastAPI(
-    title="YouTube Downloader API",
-    description="A production-ready API for downloading YouTube videos, audio, subtitles, and thumbnails.",
-    version="1.0.0",
+    title="YouTube & Instagram Downloader API",
+    description="A production-ready API for downloading YouTube videos and Instagram content (posts, reels, stories).",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+instagram_router = APIRouter(prefix="/instagram", tags=["Instagram"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -80,6 +88,44 @@ class BatchDownloadRequest(BaseModel):
     quality: Optional[str] = Field(default="best", description="Quality: best, worst, audio_only, 720p, 1080p, 1440p, 4k")
     type: Optional[str] = Field(default="video", description="Type: video, audio, both")
     audio_format: Optional[str] = Field(default="best", description="Audio format: mp3, m4a, best")
+
+
+class InstagramPostDownloadRequest(BaseModel):
+    url: str = Field(..., description="Instagram post URL or shortcode")
+    quality: Optional[str] = Field(default="best", description="Quality: best, medium, low")
+    download_type: Optional[str] = Field(default="media", description="Type: media, video_only, image_only")
+    include_metadata: Optional[bool] = Field(default=True, description="Include post metadata")
+
+
+class InstagramReelDownloadRequest(BaseModel):
+    url: str = Field(..., description="Instagram reel URL or shortcode")
+    quality: Optional[str] = Field(default="best", description="Quality: best, 1080p, 720p, 480p")
+    download_type: Optional[str] = Field(default="video", description="Type: video, audio_only, video_only")
+    audio_format: Optional[str] = Field(default="best", description="Audio format: best, mp3, m4a")
+    include_metadata: Optional[bool] = Field(default=True, description="Include reel metadata")
+
+
+class InstagramStoryDownloadRequest(BaseModel):
+    username: str = Field(..., description="Instagram username")
+    quality: Optional[str] = Field(default="best", description="Quality: best, high, medium, low")
+    format: Optional[str] = Field(default="individual", description="Format: individual, zip")
+
+
+class InstagramCarouselDownloadRequest(BaseModel):
+    url: str = Field(..., description="Instagram carousel post URL")
+    quality: Optional[str] = Field(default="best", description="Quality: best, high, medium, low")
+    include_metadata: Optional[bool] = Field(default=True, description="Include metadata.json in ZIP")
+
+
+class InstagramBatchItem(BaseModel):
+    url: str = Field(..., description="Instagram URL or shortcode")
+    type: str = Field(..., description="Content type: post, reel, story")
+
+
+class InstagramBatchDownloadRequest(BaseModel):
+    items: List[InstagramBatchItem] = Field(..., description="List of items to download")
+    quality: Optional[str] = Field(default="best", description="Quality preference")
+    continue_on_error: Optional[bool] = Field(default=True, description="Continue if individual download fails")
 
 
 def get_client_ip(request: Request) -> str:
@@ -1051,6 +1097,1269 @@ async def get_thumbnail(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting thumbnail: {str(e)}")
+
+
+def normalize_instagram_url(url_or_code: str) -> str:
+    """Convert Instagram shortcode or URL to full URL."""
+    url_or_code = url_or_code.strip()
+    
+    if url_or_code.startswith(('http://', 'https://')):
+        return url_or_code
+    
+    if '/p/' in url_or_code or '/reel/' in url_or_code or '/reels/' in url_or_code:
+        return f"https://www.instagram.com{url_or_code}"
+    
+    return f"https://www.instagram.com/p/{url_or_code}/"
+
+
+def normalize_instagram_reel_url(url_or_code: str) -> str:
+    """Convert Instagram reel shortcode or URL to full URL."""
+    url_or_code = url_or_code.strip()
+    
+    if url_or_code.startswith(('http://', 'https://')):
+        return url_or_code
+    
+    if '/reel/' in url_or_code or '/reels/' in url_or_code:
+        return f"https://www.instagram.com{url_or_code}"
+    
+    return f"https://www.instagram.com/reel/{url_or_code}/"
+
+
+def normalize_instagram_profile_url(username: str) -> str:
+    """Convert Instagram username to profile URL."""
+    username = username.strip().lstrip('@')
+    return f"https://www.instagram.com/{username}/"
+
+
+def normalize_instagram_stories_url(username: str) -> str:
+    """Convert Instagram username to stories URL."""
+    username = username.strip().lstrip('@')
+    return f"https://www.instagram.com/stories/{username}/"
+
+
+def extract_instagram_shortcode(url: str) -> Optional[str]:
+    """Extract shortcode from Instagram URL."""
+    patterns = [
+        r'instagram\.com/p/([A-Za-z0-9_-]+)',
+        r'instagram\.com/reel/([A-Za-z0-9_-]+)',
+        r'instagram\.com/reels/([A-Za-z0-9_-]+)',
+        r'instagram\.com/tv/([A-Za-z0-9_-]+)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+
+def get_instagram_ydl_opts(output_path: str, quality: str = "best") -> dict:
+    """Get yt-dlp options for Instagram downloads."""
+    opts = {
+        "outtmpl": output_path,
+        "quiet": True,
+        "no_warnings": True,
+        "ignoreerrors": False,
+        "extract_flat": False,
+    }
+    
+    if quality == "best":
+        opts["format"] = "best"
+    elif quality in ["1080p", "high"]:
+        opts["format"] = "best[height<=1080]/best"
+    elif quality in ["720p", "medium"]:
+        opts["format"] = "best[height<=720]/best"
+    elif quality in ["480p", "low"]:
+        opts["format"] = "best[height<=480]/best"
+    else:
+        opts["format"] = "best"
+    
+    return opts
+
+
+def get_instagram_audio_opts(output_path: str, audio_format: str = "mp3") -> dict:
+    """Get yt-dlp options for Instagram audio extraction."""
+    opts = {
+        "outtmpl": output_path,
+        "quiet": True,
+        "no_warnings": True,
+        "format": "bestaudio/best",
+    }
+    
+    if audio_format == "mp3":
+        opts["postprocessors"] = [{
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "mp3",
+            "preferredquality": "192",
+        }]
+    elif audio_format == "m4a":
+        opts["postprocessors"] = [{
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "m4a",
+            "preferredquality": "192",
+        }]
+    
+    return opts
+
+
+def extract_instagram_post_info(info: dict) -> dict:
+    """Extract relevant Instagram post information."""
+    entries = info.get("entries", [info])
+    if not entries:
+        entries = [info]
+    
+    first_entry = entries[0] if entries else info
+    
+    is_carousel = len(entries) > 1 if info.get("_type") == "playlist" else False
+    
+    media_items = []
+    for idx, entry in enumerate(entries):
+        if entry:
+            item = {
+                "index": idx,
+                "type": "video" if entry.get("ext") in ["mp4", "webm", "m4v"] else "image",
+                "url": entry.get("url") or entry.get("webpage_url"),
+                "thumbnail": entry.get("thumbnail"),
+                "duration": entry.get("duration"),
+                "width": entry.get("width"),
+                "height": entry.get("height"),
+            }
+            media_items.append(item)
+    
+    return {
+        "type": "carousel" if is_carousel else ("video" if first_entry.get("ext") in ["mp4", "webm", "m4v"] else "image"),
+        "post_id": info.get("id") or extract_instagram_shortcode(info.get("webpage_url", "")),
+        "shortcode": extract_instagram_shortcode(info.get("webpage_url", "")) or info.get("id"),
+        "caption": info.get("description") or info.get("title"),
+        "owner": {
+            "username": info.get("uploader") or info.get("channel"),
+            "user_id": info.get("uploader_id") or info.get("channel_id"),
+        },
+        "timestamp": info.get("timestamp"),
+        "upload_date": info.get("upload_date"),
+        "view_count": info.get("view_count"),
+        "like_count": info.get("like_count"),
+        "comment_count": info.get("comment_count"),
+        "duration": info.get("duration"),
+        "thumbnail": info.get("thumbnail"),
+        "webpage_url": info.get("webpage_url"),
+        "is_carousel": is_carousel,
+        "carousel_count": len(entries) if is_carousel else None,
+        "media_items": media_items if is_carousel else None,
+    }
+
+
+def extract_instagram_reel_info(info: dict) -> dict:
+    """Extract relevant Instagram reel information."""
+    return {
+        "type": "reel",
+        "reel_id": info.get("id"),
+        "shortcode": extract_instagram_shortcode(info.get("webpage_url", "")) or info.get("id"),
+        "caption": info.get("description") or info.get("title"),
+        "video_url": info.get("url"),
+        "thumbnail": info.get("thumbnail"),
+        "duration": info.get("duration"),
+        "width": info.get("width"),
+        "height": info.get("height"),
+        "fps": info.get("fps"),
+        "owner": {
+            "username": info.get("uploader") or info.get("channel"),
+            "user_id": info.get("uploader_id") or info.get("channel_id"),
+        },
+        "timestamp": info.get("timestamp"),
+        "upload_date": info.get("upload_date"),
+        "view_count": info.get("view_count"),
+        "like_count": info.get("like_count"),
+        "comment_count": info.get("comment_count"),
+        "webpage_url": info.get("webpage_url"),
+        "formats": [
+            {
+                "format_id": f.get("format_id"),
+                "ext": f.get("ext"),
+                "resolution": f.get("resolution") or f"{f.get('width', 'N/A')}x{f.get('height', 'N/A')}",
+                "filesize": f.get("filesize"),
+            }
+            for f in info.get("formats", [])[:5]
+        ],
+    }
+
+
+def extract_instagram_story_info(info: dict) -> dict:
+    """Extract relevant Instagram story information."""
+    entries = info.get("entries", [info])
+    if not entries:
+        entries = [info]
+    
+    stories = []
+    for idx, entry in enumerate(entries):
+        if entry:
+            stories.append({
+                "story_id": entry.get("id"),
+                "story_index": idx + 1,
+                "media_type": "video" if entry.get("ext") in ["mp4", "webm", "m4v"] else "image",
+                "url": entry.get("url") or entry.get("webpage_url"),
+                "thumbnail": entry.get("thumbnail"),
+                "duration": entry.get("duration"),
+                "timestamp": entry.get("timestamp"),
+                "width": entry.get("width"),
+                "height": entry.get("height"),
+            })
+    
+    return {
+        "type": "stories",
+        "username": info.get("uploader") or info.get("channel"),
+        "user_id": info.get("uploader_id") or info.get("channel_id"),
+        "has_active_stories": len(stories) > 0,
+        "active_stories_count": len(stories),
+        "stories": stories,
+    }
+
+
+@instagram_router.get("/info")
+async def instagram_api_info():
+    """
+    Get Instagram API information and capabilities.
+    Returns available endpoints and supported features.
+    """
+    return {
+        "api": {
+            "name": "Instagram Downloader & Info API",
+            "version": "1.0.0",
+            "base_url": "/instagram",
+        },
+        "capabilities": {
+            "supported_content_types": ["posts", "reels", "stories", "carousels"],
+            "download_features": ["batch_downloads", "quality_selection", "audio_extraction", "zip_export"],
+        },
+        "limits": {
+            "max_batch_size": 20,
+            "file_retention_minutes": 30,
+            "rate_limit_requests_per_minute": 30,
+        },
+        "endpoints": [
+            {"method": "GET", "path": "/instagram/post/info", "description": "Get post information"},
+            {"method": "GET", "path": "/instagram/reel/info", "description": "Get reel information"},
+            {"method": "GET", "path": "/instagram/story/info", "description": "Get stories information"},
+            {"method": "GET", "path": "/instagram/profile/info", "description": "Get profile information"},
+            {"method": "POST", "path": "/instagram/download/post", "description": "Download a post"},
+            {"method": "POST", "path": "/instagram/download/reel", "description": "Download a reel"},
+            {"method": "POST", "path": "/instagram/download/story", "description": "Download stories"},
+            {"method": "POST", "path": "/instagram/download/carousel", "description": "Download carousel as ZIP"},
+            {"method": "POST", "path": "/instagram/download/batch", "description": "Batch download"},
+            {"method": "GET", "path": "/instagram/status/{job_id}", "description": "Check download status"},
+            {"method": "GET", "path": "/instagram/download/file/{filename}", "description": "Get downloaded file"},
+        ]
+    }
+
+
+@instagram_router.get("/formats")
+async def instagram_get_formats():
+    """
+    Get available download formats and quality options for Instagram content.
+    Returns supported qualities for posts, reels, and stories.
+    """
+    return {
+        "type": "available_formats",
+        "post_formats": {
+            "image": {
+                "qualities": [
+                    {"name": "best", "description": "Original resolution"},
+                    {"name": "high", "description": "High quality"},
+                    {"name": "medium", "description": "Medium quality"},
+                    {"name": "low", "description": "Low quality"},
+                ]
+            },
+            "video": {
+                "qualities": [
+                    {"name": "best", "description": "Best available quality"},
+                    {"name": "1080p", "description": "Full HD"},
+                    {"name": "720p", "description": "HD"},
+                    {"name": "480p", "description": "Mobile friendly"},
+                ]
+            }
+        },
+        "reel_formats": {
+            "video_qualities": [
+                {"name": "best", "description": "Best quality"},
+                {"name": "1080p", "description": "Full HD"},
+                {"name": "720p", "description": "HD"},
+                {"name": "480p", "description": "Standard"},
+            ],
+            "audio_formats": [
+                {"format": "best", "description": "Best available"},
+                {"format": "mp3", "bitrate": "192k"},
+                {"format": "m4a", "bitrate": "128k"},
+            ]
+        },
+        "story_formats": {
+            "qualities": [
+                {"name": "best", "description": "Original resolution"},
+                {"name": "high", "description": "High quality"},
+                {"name": "medium", "description": "Medium quality"},
+            ]
+        }
+    }
+
+
+@instagram_router.get("/post/info")
+async def instagram_get_post_info(
+    request: Request,
+    url: str = Query(..., description="Instagram post URL or shortcode")
+):
+    """
+    Get detailed information about an Instagram post.
+    Supports single images, videos, and carousels.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    try:
+        normalized_url = normalize_instagram_url(url)
+        
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": False,
+            "ignoreerrors": True,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(normalized_url, download=False)
+            
+            if info is None:
+                raise HTTPException(
+                    status_code=404, 
+                    detail="Post not found. It may be private, deleted, or the URL is invalid."
+                )
+            
+            return {
+                "success": True,
+                **extract_instagram_post_info(info)
+            }
+            
+    except yt_dlp.utils.DownloadError as e:
+        error_msg = str(e).lower()
+        if "private" in error_msg:
+            raise HTTPException(status_code=403, detail="This post is from a private account.")
+        elif "not found" in error_msg or "404" in error_msg:
+            raise HTTPException(status_code=404, detail="Post not found or has been deleted.")
+        elif "login" in error_msg or "authentication" in error_msg:
+            raise HTTPException(status_code=403, detail="This content requires authentication.")
+        else:
+            raise HTTPException(status_code=400, detail=f"Error extracting post info: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@instagram_router.get("/reel/info")
+async def instagram_get_reel_info(
+    request: Request,
+    url: str = Query(..., description="Instagram reel URL or shortcode")
+):
+    """
+    Get detailed information about an Instagram reel.
+    Returns video metadata, engagement stats, and available formats.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    try:
+        normalized_url = normalize_instagram_reel_url(url)
+        
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": False,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(normalized_url, download=False)
+            
+            if info is None:
+                raise HTTPException(
+                    status_code=404, 
+                    detail="Reel not found. It may be private, deleted, or the URL is invalid."
+                )
+            
+            return {
+                "success": True,
+                **extract_instagram_reel_info(info)
+            }
+            
+    except yt_dlp.utils.DownloadError as e:
+        error_msg = str(e).lower()
+        if "private" in error_msg:
+            raise HTTPException(status_code=403, detail="This reel is from a private account.")
+        elif "not found" in error_msg or "404" in error_msg:
+            raise HTTPException(status_code=404, detail="Reel not found or has been deleted.")
+        else:
+            raise HTTPException(status_code=400, detail=f"Error extracting reel info: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@instagram_router.get("/story/info")
+async def instagram_get_story_info(
+    request: Request,
+    username: str = Query(..., description="Instagram username")
+):
+    """
+    Get information about active stories from an Instagram profile.
+    Returns list of currently available stories.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    try:
+        stories_url = normalize_instagram_stories_url(username)
+        
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": False,
+            "ignoreerrors": True,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(stories_url, download=False)
+            
+            if info is None:
+                return {
+                    "success": True,
+                    "type": "stories",
+                    "username": username.strip().lstrip('@'),
+                    "has_active_stories": False,
+                    "active_stories_count": 0,
+                    "stories": [],
+                    "message": "No active stories found or account may be private."
+                }
+            
+            return {
+                "success": True,
+                **extract_instagram_story_info(info)
+            }
+            
+    except yt_dlp.utils.DownloadError as e:
+        error_msg = str(e).lower()
+        if "private" in error_msg:
+            raise HTTPException(status_code=403, detail="This account is private.")
+        elif "not found" in error_msg:
+            raise HTTPException(status_code=404, detail="Profile not found.")
+        else:
+            return {
+                "success": True,
+                "type": "stories",
+                "username": username.strip().lstrip('@'),
+                "has_active_stories": False,
+                "active_stories_count": 0,
+                "stories": [],
+                "message": "No active stories found or stories have expired."
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@instagram_router.get("/profile/info")
+async def instagram_get_profile_info(
+    request: Request,
+    username: str = Query(..., description="Instagram username")
+):
+    """
+    Get profile information for an Instagram account.
+    Returns username, bio, followers count, and recent content info.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    try:
+        profile_url = normalize_instagram_profile_url(username)
+        
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": True,
+            "ignoreerrors": True,
+            "playlistend": 12,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(profile_url, download=False)
+            
+            if info is None:
+                raise HTTPException(status_code=404, detail="Profile not found.")
+            
+            entries = info.get("entries", [])
+            recent_posts = []
+            for entry in entries[:12]:
+                if entry:
+                    recent_posts.append({
+                        "id": entry.get("id"),
+                        "title": entry.get("title"),
+                        "url": entry.get("url") or entry.get("webpage_url"),
+                        "thumbnail": entry.get("thumbnail"),
+                        "duration": entry.get("duration"),
+                    })
+            
+            return {
+                "success": True,
+                "type": "profile",
+                "username": info.get("uploader") or info.get("channel") or username.strip().lstrip('@'),
+                "user_id": info.get("uploader_id") or info.get("channel_id"),
+                "profile_url": profile_url,
+                "total_posts": info.get("playlist_count") or len(entries),
+                "recent_posts": recent_posts,
+                "recent_posts_count": len(recent_posts),
+            }
+            
+    except yt_dlp.utils.DownloadError as e:
+        error_msg = str(e).lower()
+        if "private" in error_msg:
+            raise HTTPException(status_code=403, detail="This account is private.")
+        elif "not found" in error_msg or "404" in error_msg:
+            raise HTTPException(status_code=404, detail="Profile not found.")
+        else:
+            raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@instagram_router.get("/profile/posts")
+async def instagram_get_profile_posts(
+    request: Request,
+    username: str = Query(..., description="Instagram username"),
+    limit: int = Query(default=12, ge=1, le=50, description="Number of posts to return")
+):
+    """
+    Get recent posts from an Instagram profile.
+    Supports pagination with limit parameter.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    try:
+        profile_url = normalize_instagram_profile_url(username)
+        
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": True,
+            "ignoreerrors": True,
+            "playlistend": limit,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(profile_url, download=False)
+            
+            if info is None:
+                raise HTTPException(status_code=404, detail="Profile not found.")
+            
+            entries = info.get("entries", [])
+            posts = []
+            for idx, entry in enumerate(entries[:limit]):
+                if entry:
+                    posts.append({
+                        "index": idx,
+                        "post_id": entry.get("id"),
+                        "title": entry.get("title"),
+                        "url": entry.get("url") or entry.get("webpage_url"),
+                        "thumbnail": entry.get("thumbnail"),
+                        "duration": entry.get("duration"),
+                        "is_video": entry.get("duration") is not None,
+                    })
+            
+            return {
+                "success": True,
+                "type": "profile_posts",
+                "username": info.get("uploader") or username.strip().lstrip('@'),
+                "total_posts": info.get("playlist_count") or len(entries),
+                "returned_count": len(posts),
+                "limit": limit,
+                "posts": posts,
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@instagram_router.post("/download/post")
+async def instagram_download_post(
+    request: Request,
+    download_req: InstagramPostDownloadRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Download an Instagram post (image, video, or carousel).
+    Returns a job ID for tracking download progress.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    job_id = str(uuid.uuid4())
+    normalized_url = normalize_instagram_url(download_req.url)
+    
+    jobs[job_id] = {
+        "status": "pending",
+        "progress": 0,
+        "url": normalized_url,
+        "created_at": datetime.now().isoformat(),
+        "files": [],
+        "error": None,
+        "type": "instagram_post",
+        "platform": "instagram"
+    }
+    
+    background_tasks.add_task(
+        process_instagram_download,
+        job_id,
+        normalized_url,
+        download_req.quality or "best",
+        download_req.download_type or "media",
+        None
+    )
+    
+    return {
+        "job_id": job_id,
+        "status": "pending",
+        "message": "Post download started. Use /instagram/status/{job_id} to check progress.",
+        "status_url": f"/instagram/status/{job_id}"
+    }
+
+
+@instagram_router.post("/download/reel")
+async def instagram_download_reel(
+    request: Request,
+    download_req: InstagramReelDownloadRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Download an Instagram reel with optional audio extraction.
+    Returns a job ID for tracking download progress.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    job_id = str(uuid.uuid4())
+    normalized_url = normalize_instagram_reel_url(download_req.url)
+    
+    jobs[job_id] = {
+        "status": "pending",
+        "progress": 0,
+        "url": normalized_url,
+        "created_at": datetime.now().isoformat(),
+        "files": [],
+        "error": None,
+        "type": "instagram_reel",
+        "platform": "instagram"
+    }
+    
+    background_tasks.add_task(
+        process_instagram_download,
+        job_id,
+        normalized_url,
+        download_req.quality or "best",
+        download_req.download_type or "video",
+        download_req.audio_format if download_req.download_type == "audio_only" else None
+    )
+    
+    return {
+        "job_id": job_id,
+        "status": "pending",
+        "message": "Reel download started. Use /instagram/status/{job_id} to check progress.",
+        "status_url": f"/instagram/status/{job_id}"
+    }
+
+
+@instagram_router.post("/download/story")
+async def instagram_download_story(
+    request: Request,
+    download_req: InstagramStoryDownloadRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Download Instagram stories from a user.
+    Returns a job ID for tracking download progress.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    job_id = str(uuid.uuid4())
+    stories_url = normalize_instagram_stories_url(download_req.username)
+    
+    jobs[job_id] = {
+        "status": "pending",
+        "progress": 0,
+        "url": stories_url,
+        "username": download_req.username.strip().lstrip('@'),
+        "created_at": datetime.now().isoformat(),
+        "files": [],
+        "error": None,
+        "type": "instagram_story",
+        "platform": "instagram",
+        "format": download_req.format
+    }
+    
+    background_tasks.add_task(
+        process_instagram_story_download,
+        job_id,
+        stories_url,
+        download_req.quality or "best",
+        download_req.format or "individual"
+    )
+    
+    return {
+        "job_id": job_id,
+        "status": "pending",
+        "message": "Story download started. Use /instagram/status/{job_id} to check progress.",
+        "status_url": f"/instagram/status/{job_id}"
+    }
+
+
+@instagram_router.post("/download/carousel")
+async def instagram_download_carousel(
+    request: Request,
+    download_req: InstagramCarouselDownloadRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Download an Instagram carousel (multi-image/video post) as a ZIP file.
+    All media items are bundled together with optional metadata.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    job_id = str(uuid.uuid4())
+    normalized_url = normalize_instagram_url(download_req.url)
+    
+    jobs[job_id] = {
+        "status": "pending",
+        "progress": 0,
+        "url": normalized_url,
+        "created_at": datetime.now().isoformat(),
+        "files": [],
+        "error": None,
+        "type": "instagram_carousel",
+        "platform": "instagram",
+        "include_metadata": download_req.include_metadata
+    }
+    
+    background_tasks.add_task(
+        process_instagram_carousel_download,
+        job_id,
+        normalized_url,
+        download_req.quality or "best",
+        download_req.include_metadata
+    )
+    
+    return {
+        "job_id": job_id,
+        "status": "pending",
+        "message": "Carousel download started as ZIP. Use /instagram/status/{job_id} to check progress.",
+        "status_url": f"/instagram/status/{job_id}"
+    }
+
+
+@instagram_router.post("/download/batch")
+async def instagram_download_batch(
+    request: Request,
+    batch_req: InstagramBatchDownloadRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Download multiple Instagram posts/reels in batch.
+    Returns a job ID for tracking all downloads.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    if not batch_req.items:
+        raise HTTPException(status_code=400, detail="At least one item must be provided")
+    
+    if len(batch_req.items) > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 items per batch download")
+    
+    job_id = str(uuid.uuid4())
+    
+    jobs[job_id] = {
+        "status": "pending",
+        "progress": 0,
+        "items": [{"url": item.url, "type": item.type} for item in batch_req.items],
+        "created_at": datetime.now().isoformat(),
+        "files": [],
+        "error": None,
+        "type": "instagram_batch",
+        "platform": "instagram",
+        "total_items": len(batch_req.items),
+        "completed_count": 0,
+        "errors": []
+    }
+    
+    background_tasks.add_task(
+        process_instagram_batch_download,
+        job_id,
+        batch_req.items,
+        batch_req.quality or "best",
+        batch_req.continue_on_error
+    )
+    
+    return {
+        "job_id": job_id,
+        "status": "pending",
+        "total_items": len(batch_req.items),
+        "message": "Batch download started. Use /instagram/status/{job_id} to check progress.",
+        "status_url": f"/instagram/status/{job_id}"
+    }
+
+
+@instagram_router.get("/status/{job_id}")
+async def instagram_get_status(job_id: str):
+    """
+    Check the status of an Instagram download job.
+    Returns progress percentage and download links when complete.
+    """
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found or has expired")
+    
+    job = jobs[job_id]
+    
+    if job.get("platform") != "instagram":
+        raise HTTPException(status_code=400, detail="This is not an Instagram job. Use /status/{job_id} for YouTube jobs.")
+    
+    response = {
+        "job_id": job_id,
+        "status": job["status"],
+        "progress": job["progress"],
+        "type": job.get("type"),
+        "files": job.get("files", []),
+        "error": job.get("error"),
+        "created_at": job["created_at"],
+    }
+    
+    if job.get("type") == "instagram_batch":
+        response["total_items"] = job.get("total_items")
+        response["completed_count"] = job.get("completed_count")
+        response["errors"] = job.get("errors", [])
+    
+    if job["status"] == "completed" and job.get("files"):
+        response["message"] = "Download completed successfully."
+        response["file_count"] = len(job.get("files", []))
+    elif job["status"] == "failed":
+        response["message"] = f"Download failed: {job.get('error', 'Unknown error')}"
+    elif job["status"] == "processing":
+        response["message"] = "Download in progress..."
+    else:
+        response["message"] = "Download queued..."
+    
+    return response
+
+
+@instagram_router.get("/download/file/{filename}")
+async def instagram_download_file(filename: str):
+    """
+    Download a completed Instagram media file.
+    Files are automatically cleaned up after 30 minutes.
+    """
+    file_path = INSTAGRAM_DOWNLOAD_DIR / filename
+    
+    if not file_path.exists():
+        file_path = DOWNLOAD_DIR / filename
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found or has been cleaned up")
+    
+    media_types = {
+        ".mp4": "video/mp4",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".mp3": "audio/mpeg",
+        ".m4a": "audio/mp4",
+        ".zip": "application/zip",
+    }
+    
+    ext = file_path.suffix.lower()
+    media_type = media_types.get(ext, "application/octet-stream")
+    
+    return FileResponse(
+        path=str(file_path),
+        filename=filename,
+        media_type=media_type,
+        headers={"Cache-Control": "no-cache"}
+    )
+
+
+@instagram_router.get("/post/stats")
+async def instagram_get_post_stats(
+    request: Request,
+    url: str = Query(..., description="Instagram post URL or shortcode")
+):
+    """
+    Get engagement statistics for an Instagram post.
+    Returns likes, comments, and view counts.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded.")
+    
+    try:
+        normalized_url = normalize_instagram_url(url)
+        
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(normalized_url, download=False)
+            
+            if info is None:
+                raise HTTPException(status_code=404, detail="Post not found.")
+            
+            likes = info.get("like_count", 0)
+            comments = info.get("comment_count", 0)
+            views = info.get("view_count", 0)
+            
+            total_engagement = likes + comments
+            
+            return {
+                "success": True,
+                "type": "post_statistics",
+                "post_id": info.get("id"),
+                "shortcode": extract_instagram_shortcode(info.get("webpage_url", "")),
+                "owner_username": info.get("uploader") or info.get("channel"),
+                "statistics": {
+                    "likes_count": likes,
+                    "comments_count": comments,
+                    "view_count": views,
+                    "total_engagement": total_engagement,
+                },
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@instagram_router.get("/reel/stats")
+async def instagram_get_reel_stats(
+    request: Request,
+    url: str = Query(..., description="Instagram reel URL or shortcode")
+):
+    """
+    Get engagement statistics for an Instagram reel.
+    Returns views, likes, comments, and engagement metrics.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded.")
+    
+    try:
+        normalized_url = normalize_instagram_reel_url(url)
+        
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(normalized_url, download=False)
+            
+            if info is None:
+                raise HTTPException(status_code=404, detail="Reel not found.")
+            
+            views = info.get("view_count", 0)
+            likes = info.get("like_count", 0)
+            comments = info.get("comment_count", 0)
+            duration = info.get("duration", 0)
+            
+            total_engagement = likes + comments
+            
+            return {
+                "success": True,
+                "type": "reel_statistics",
+                "reel_id": info.get("id"),
+                "shortcode": extract_instagram_shortcode(info.get("webpage_url", "")),
+                "owner_username": info.get("uploader") or info.get("channel"),
+                "duration_seconds": duration,
+                "statistics": {
+                    "view_count": views,
+                    "likes_count": likes,
+                    "comments_count": comments,
+                    "total_engagement": total_engagement,
+                },
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+async def process_instagram_download(
+    job_id: str, 
+    url: str, 
+    quality: str, 
+    download_type: str,
+    audio_format: Optional[str]
+):
+    """Background task to process Instagram post/reel download."""
+    try:
+        jobs[job_id]["status"] = "processing"
+        
+        file_id = str(uuid.uuid4())[:8]
+        output_template = str(INSTAGRAM_DOWNLOAD_DIR / f"{file_id}_%(title)s.%(ext)s")
+        
+        if download_type == "audio_only" and audio_format:
+            ydl_opts = get_instagram_audio_opts(output_template, audio_format)
+        else:
+            ydl_opts = get_instagram_ydl_opts(output_template, quality)
+        
+        def progress_hook(d):
+            if d["status"] == "downloading":
+                total = d.get("total_bytes") or d.get("total_bytes_estimate", 0)
+                downloaded = d.get("downloaded_bytes", 0)
+                if total > 0:
+                    jobs[job_id]["progress"] = int((downloaded / total) * 100)
+            elif d["status"] == "finished":
+                jobs[job_id]["progress"] = 100
+        
+        ydl_opts["progress_hooks"] = [progress_hook]
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            
+            if info:
+                downloaded_files = list(INSTAGRAM_DOWNLOAD_DIR.glob(f"{file_id}_*"))
+                jobs[job_id]["files"] = [
+                    {
+                        "filename": f.name,
+                        "size": f.stat().st_size,
+                        "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
+                        "download_url": f"/instagram/download/file/{f.name}",
+                        "media_type": "video" if f.suffix in [".mp4", ".webm"] else ("audio" if f.suffix in [".mp3", ".m4a"] else "image")
+                    }
+                    for f in downloaded_files
+                ]
+                jobs[job_id]["status"] = "completed"
+                jobs[job_id]["title"] = info.get("title") or info.get("description", "")[:50]
+            else:
+                jobs[job_id]["status"] = "failed"
+                jobs[job_id]["error"] = "Download failed - could not extract content"
+                
+    except Exception as e:
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
+
+async def process_instagram_story_download(
+    job_id: str,
+    url: str,
+    quality: str,
+    output_format: str
+):
+    """Background task to process Instagram story download."""
+    try:
+        jobs[job_id]["status"] = "processing"
+        
+        file_id = str(uuid.uuid4())[:8]
+        output_template = str(INSTAGRAM_DOWNLOAD_DIR / f"{file_id}_story_%(autonumber)s.%(ext)s")
+        
+        ydl_opts = get_instagram_ydl_opts(output_template, quality)
+        
+        def progress_hook(d):
+            if d["status"] == "finished":
+                jobs[job_id]["progress"] = min(jobs[job_id]["progress"] + 20, 90)
+        
+        ydl_opts["progress_hooks"] = [progress_hook]
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            
+            if info:
+                downloaded_files = list(INSTAGRAM_DOWNLOAD_DIR.glob(f"{file_id}_*"))
+                
+                if output_format == "zip" and len(downloaded_files) > 1:
+                    zip_filename = f"{file_id}_stories.zip"
+                    zip_path = INSTAGRAM_DOWNLOAD_DIR / zip_filename
+                    
+                    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                        for f in downloaded_files:
+                            zipf.write(f, f.name)
+                    
+                    for f in downloaded_files:
+                        f.unlink()
+                    
+                    jobs[job_id]["files"] = [{
+                        "filename": zip_filename,
+                        "size": zip_path.stat().st_size,
+                        "size_mb": round(zip_path.stat().st_size / (1024 * 1024), 2),
+                        "download_url": f"/instagram/download/file/{zip_filename}",
+                        "media_type": "zip",
+                        "stories_count": len(downloaded_files)
+                    }]
+                else:
+                    jobs[job_id]["files"] = [
+                        {
+                            "filename": f.name,
+                            "size": f.stat().st_size,
+                            "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
+                            "download_url": f"/instagram/download/file/{f.name}",
+                            "media_type": "video" if f.suffix in [".mp4", ".webm"] else "image"
+                        }
+                        for f in downloaded_files
+                    ]
+                
+                jobs[job_id]["status"] = "completed"
+                jobs[job_id]["progress"] = 100
+            else:
+                jobs[job_id]["status"] = "completed"
+                jobs[job_id]["files"] = []
+                jobs[job_id]["progress"] = 100
+                jobs[job_id]["message"] = "No active stories found"
+                
+    except Exception as e:
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
+
+async def process_instagram_carousel_download(
+    job_id: str,
+    url: str,
+    quality: str,
+    include_metadata: bool
+):
+    """Background task to process Instagram carousel download as ZIP."""
+    try:
+        jobs[job_id]["status"] = "processing"
+        
+        file_id = str(uuid.uuid4())[:8]
+        output_template = str(INSTAGRAM_DOWNLOAD_DIR / f"{file_id}_%(autonumber)s.%(ext)s")
+        
+        ydl_opts = get_instagram_ydl_opts(output_template, quality)
+        
+        metadata = None
+        
+        with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
+            info = ydl.extract_info(url, download=False)
+            if info:
+                metadata = extract_instagram_post_info(info)
+        
+        jobs[job_id]["progress"] = 10
+        
+        def progress_hook(d):
+            if d["status"] == "finished":
+                jobs[job_id]["progress"] = min(jobs[job_id]["progress"] + 15, 85)
+        
+        ydl_opts["progress_hooks"] = [progress_hook]
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        
+        downloaded_files = list(INSTAGRAM_DOWNLOAD_DIR.glob(f"{file_id}_*"))
+        
+        if downloaded_files:
+            shortcode = extract_instagram_shortcode(url) or file_id
+            zip_filename = f"{shortcode}_carousel.zip"
+            zip_path = INSTAGRAM_DOWNLOAD_DIR / zip_filename
+            
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for idx, f in enumerate(sorted(downloaded_files)):
+                    new_name = f"item_{idx+1:02d}{f.suffix}"
+                    zipf.write(f, new_name)
+                
+                if include_metadata and metadata:
+                    import json
+                    metadata_json = json.dumps(metadata, indent=2, ensure_ascii=False)
+                    zipf.writestr("metadata.json", metadata_json)
+            
+            for f in downloaded_files:
+                f.unlink()
+            
+            jobs[job_id]["files"] = [{
+                "filename": zip_filename,
+                "size": zip_path.stat().st_size,
+                "size_mb": round(zip_path.stat().st_size / (1024 * 1024), 2),
+                "download_url": f"/instagram/download/file/{zip_filename}",
+                "media_type": "zip",
+                "items_count": len(downloaded_files)
+            }]
+            jobs[job_id]["status"] = "completed"
+            jobs[job_id]["progress"] = 100
+        else:
+            jobs[job_id]["status"] = "failed"
+            jobs[job_id]["error"] = "No files downloaded"
+                
+    except Exception as e:
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
+
+async def process_instagram_batch_download(
+    job_id: str,
+    items: List[InstagramBatchItem],
+    quality: str,
+    continue_on_error: bool
+):
+    """Background task to process batch Instagram downloads."""
+    try:
+        jobs[job_id]["status"] = "processing"
+        total = len(items)
+        
+        for idx, item in enumerate(items):
+            try:
+                if item.type == "reel":
+                    normalized_url = normalize_instagram_reel_url(item.url)
+                elif item.type == "story":
+                    normalized_url = normalize_instagram_stories_url(item.url)
+                else:
+                    normalized_url = normalize_instagram_url(item.url)
+                
+                file_id = str(uuid.uuid4())[:8]
+                output_template = str(INSTAGRAM_DOWNLOAD_DIR / f"{file_id}_%(title)s.%(ext)s")
+                
+                ydl_opts = get_instagram_ydl_opts(output_template, quality)
+                
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(normalized_url, download=True)
+                    
+                    if info:
+                        downloaded_files = list(INSTAGRAM_DOWNLOAD_DIR.glob(f"{file_id}_*"))
+                        for f in downloaded_files:
+                            jobs[job_id]["files"].append({
+                                "filename": f.name,
+                                "size": f.stat().st_size,
+                                "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
+                                "download_url": f"/instagram/download/file/{f.name}",
+                                "source_url": item.url,
+                                "source_type": item.type,
+                                "media_type": "video" if f.suffix in [".mp4", ".webm"] else "image"
+                            })
+                        jobs[job_id]["completed_count"] += 1
+                        
+            except Exception as e:
+                jobs[job_id]["errors"].append({
+                    "url": item.url,
+                    "type": item.type,
+                    "error": str(e)
+                })
+                if not continue_on_error:
+                    raise
+            
+            jobs[job_id]["progress"] = int(((idx + 1) / total) * 100)
+        
+        jobs[job_id]["status"] = "completed"
+        
+    except Exception as e:
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
+
+app.include_router(instagram_router)
 
 
 app.mount("/ui", StaticFiles(directory="static", html=True), name="static")
