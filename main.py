@@ -30,6 +30,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
 import yt_dlp
 import aiofiles
+from cleanup import start_cleanup_thread
 
 
 DOWNLOAD_DIR = Path("tmp/downloads")
@@ -255,6 +256,7 @@ def extract_format_info(fmt: dict) -> dict:
 async def startup_event():
     """Clean up old files on startup."""
     await cleanup_old_files()
+    start_cleanup_thread()
 
 
 @app.get("/")

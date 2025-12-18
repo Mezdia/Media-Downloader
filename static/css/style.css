@@ -1,0 +1,401 @@
+/* 
+   Media Downloader - Premium UI 
+   Designed by Mezdia
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/misc/Farsi-Digits/font-face.css');
+
+:root {
+    --bg-main: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-card: rgba(30, 41, 59, 0.7);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --primary: #3b82f6;
+    --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    --accent-youtube: #ef4444;
+    --accent-instagram: #d946ef;
+    --border: rgba(148, 163, 184, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.05);
+    --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    --radius-lg: 1rem;
+    --radius-md: 0.75rem;
+    --radius-sm: 0.5rem;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image: 
+        radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 20%),
+        radial-gradient(circle at 90% 80%, rgba(239, 68, 68, 0.05) 0%, transparent 20%);
+}
+
+/* Persian Font Overrides */
+[lang="fa"] body {
+    font-family: 'Vazirmatn FD', sans-serif;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+    animation: slideDown 0.6s ease-out;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(to right, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.lang-switch-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.lang-switch-btn:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+/* Platform Tabs */
+.platform-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 3rem;
+    animation: fadeIn 0.8s ease-out;
+}
+
+.platform-btn {
+    background: transparent;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.platform-btn.active {
+    color: var(--text-main);
+}
+
+.platform-btn::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 3px;
+    background: var(--primary);
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+.platform-btn.active::after {
+    width: 80%;
+}
+
+.platform-btn.youtube.active::after {
+    background: var(--accent-youtube);
+}
+
+.platform-btn.instagram.active::after {
+    background: var(--accent-instagram);
+}
+
+/* Main Content Area */
+.main-content {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 2rem;
+    animation: slideUp 0.8s ease-out;
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Sidebar Navigation */
+.sidebar {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    height: fit-content;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+    margin-bottom: 0.5rem;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+}
+
+.nav-item.active {
+    background: var(--primary-gradient);
+    color: white;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+}
+
+/* Content Panel */
+.content-panel {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--glass-border);
+    padding: 2rem;
+    min-height: 500px;
+    backdrop-filter: blur(10px);
+    position: relative;
+}
+
+.panel-section {
+    display: none;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.panel-section.active {
+    display: block;
+}
+
+h2 {
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 1rem;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-main);
+    transition: all 0.3s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.action-btn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--primary-gradient);
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+/* Results Area */
+.results-container {
+    margin-top: 2rem;
+    border-top: 1px solid var(--border);
+    padding-top: 2rem;
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.view-toggle {
+    display: flex;
+    background: var(--bg-main);
+    padding: 0.25rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.toggle-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+}
+
+.toggle-btn.active {
+    background: var(--bg-secondary);
+    color: var(--text-main);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Visual Card */
+.visual-card {
+    display: flex;
+    gap: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+}
+
+.visual-card img {
+    width: 200px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+}
+
+.card-info h3 {
+    margin-bottom: 0.5rem;
+}
+
+.card-meta {
+    display: flex;
+    gap: 1rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+/* JSON Viewer */
+.json-viewer {
+    background: #0d1117;
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+    color: #e6edf3;
+    max-height: 500px;
+    border: 1px solid var(--border);
+}
+
+.json-key { color: #79c0ff; }
+.json-string { color: #a5d6ff; }
+.json-number { color: #d2a8ff; }
+.json-boolean { color: #ff7b72; }
+
+/* Loading Spinner */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: var(--radius-lg);
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.loading-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--border);
+    border-top: 4px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Animations */
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* RTL Adjustments */
+[dir="rtl"] .sidebar {
+    text-align: right;
+}
+
+[dir="rtl"] .visual-card {
+    border-right: 3px solid var(--primary);
+    border-left: none;
+}
+
+[dir="rtl"] .logo {
+    flex-direction: row-reverse;
+}
