@@ -75,6 +75,13 @@ class SubtitleRequest(BaseModel):
     auto: Optional[bool] = False
 
 
+class BatchDownloadRequest(BaseModel):
+    urls: List[str] = Field(..., description="List of YouTube URLs to download")
+    quality: Optional[str] = Field(default="best", description="Quality: best, worst, audio_only, 720p, 1080p, 1440p, 4k")
+    type: Optional[str] = Field(default="video", description="Type: video, audio, both")
+    audio_format: Optional[str] = Field(default="best", description="Audio format: mp3, m4a, best")
+
+
 def get_client_ip(request: Request) -> str:
     """Get client IP address from request."""
     if request.client:
@@ -454,6 +461,227 @@ async def download_file(filename: str):
         filename=filename,
         media_type="application/octet-stream"
     )
+
+
+@app.post("/download/batch")
+async def download_batch(request: Request, batch_req: BatchDownloadRequest, background_tasks: BackgroundTasks):
+    """
+    Download multiple YouTube videos/audios simultaneously.
+    Returns a job ID for tracking all downloads together.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    if not batch_req.urls:
+        raise HTTPException(status_code=400, detail="At least one URL must be provided")
+    
+    if len(batch_req.urls) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 URLs per batch download")
+    
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "status": "pending",
+        "progress": 0,
+        "urls": batch_req.urls,
+        "created_at": datetime.now().isoformat(),
+        "files": [],
+        "error": None,
+        "type": "batch",
+        "total_urls": len(batch_req.urls),
+        "completed_count": 0
+    }
+    
+    background_tasks.add_task(
+        process_batch_download,
+        job_id,
+        batch_req.urls,
+        batch_req.quality,
+        batch_req.type,
+        batch_req.audio_format
+    )
+    
+    return {
+        "job_id": job_id,
+        "status": "pending",
+        "total_urls": len(batch_req.urls),
+        "message": "Batch download started. Use /status/{job_id} to check progress.",
+        "status_url": f"/status/{job_id}"
+    }
+
+
+async def process_batch_download(job_id: str, urls: List[str], quality: str, download_type: str, audio_format: str):
+    """Background task to process batch downloads."""
+    try:
+        jobs[job_id]["status"] = "processing"
+        total = len(urls)
+        
+        for idx, url in enumerate(urls):
+            try:
+                file_id = str(uuid.uuid4())[:8]
+                output_template = str(DOWNLOAD_DIR / f"{file_id}_%(title)s.%(ext)s")
+                format_str = get_format_string(quality, download_type)
+                download_opts = get_yt_dlp_opts(output_template, format_str, audio_format)
+                
+                with yt_dlp.YoutubeDL(download_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    
+                    if info:
+                        downloaded_files = list(DOWNLOAD_DIR.glob(f"{file_id}_*"))
+                        for f in downloaded_files:
+                            jobs[job_id]["files"].append({
+                                "filename": f.name,
+                                "path": str(f),
+                                "size": f.stat().st_size,
+                                "download_url": f"/download/file/{f.name}",
+                                "title": info.get("title")
+                            })
+                        jobs[job_id]["completed_count"] += 1
+                    
+            except Exception as e:
+                jobs[job_id].setdefault("errors", []).append({
+                    "url": url,
+                    "error": str(e)
+                })
+            
+            jobs[job_id]["progress"] = int(((idx + 1) / total) * 100)
+        
+        jobs[job_id]["status"] = "completed"
+        
+    except Exception as e:
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
+
+@app.post("/jobs/{job_id}/cancel")
+async def cancel_job(job_id: str):
+    """
+    Cancel a running download job.
+    Only pending and processing jobs can be cancelled.
+    """
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = jobs[job_id]
+    
+    if job["status"] not in ["pending", "processing"]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot cancel job with status '{job['status']}'. Only pending or processing jobs can be cancelled."
+        )
+    
+    job["status"] = "cancelled"
+    job["error"] = "Job was cancelled by user"
+    
+    return {
+        "job_id": job_id,
+        "status": "cancelled",
+        "message": "Download job has been cancelled",
+        "cancelled_at": datetime.now().isoformat()
+    }
+
+
+@app.get("/jobs")
+async def list_jobs(
+    skip: int = Query(default=0, ge=0, description="Number of jobs to skip"),
+    limit: int = Query(default=10, ge=1, le=100, description="Number of jobs to return"),
+    status: Optional[str] = Query(default=None, description="Filter by status: pending, processing, completed, failed, cancelled"),
+    type: Optional[str] = Query(default=None, description="Filter by type: video, playlist, batch")
+):
+    """
+    List all download jobs with pagination and filtering.
+    Returns job summaries with status and progress.
+    """
+    # Filter jobs based on criteria
+    filtered_jobs = list(jobs.items())
+    
+    if status:
+        filtered_jobs = [(jid, j) for jid, j in filtered_jobs if j.get("status") == status]
+    
+    if type:
+        filtered_jobs = [(jid, j) for jid, j in filtered_jobs if j.get("type", "video") == type]
+    
+    # Sort by creation time (newest first)
+    filtered_jobs.sort(key=lambda x: x[1].get("created_at", ""), reverse=True)
+    
+    # Apply pagination
+    total = len(filtered_jobs)
+    paginated_jobs = filtered_jobs[skip:skip + limit]
+    
+    job_summaries = []
+    for job_id, job in paginated_jobs:
+        job_summaries.append({
+            "job_id": job_id,
+            "status": job.get("status"),
+            "type": job.get("type", "video"),
+            "progress": job.get("progress"),
+            "created_at": job.get("created_at"),
+            "files_count": len(job.get("files", [])),
+            "error_count": len(job.get("errors", [])),
+            "title": job.get("title"),
+            "total_urls": job.get("total_urls"),
+            "completed_count": job.get("completed_count")
+        })
+    
+    return {
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "jobs": job_summaries,
+        "has_more": (skip + limit) < total
+    }
+
+
+@app.get("/stream/video")
+async def stream_video(
+    request: Request,
+    url: str = Query(..., description="YouTube video URL"),
+    quality: str = Query(default="best", description="Quality: best, worst, 720p, 1080p, 1440p, 4k")
+):
+    """
+    Stream a YouTube video directly without saving to disk.
+    Returns a streaming response that can be played in real-time.
+    """
+    if not check_rate_limit(get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    
+    try:
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "format": get_format_string(quality, "video"),
+            "socket_timeout": 30,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            
+            if info is None:
+                raise HTTPException(status_code=400, detail="Could not extract video information")
+            
+            # Get the best video format URL
+            formats = info.get("formats", [])
+            video_url = None
+            
+            for fmt in formats:
+                if fmt.get("vcodec") != "none" and fmt.get("format_id"):
+                    video_url = fmt.get("url")
+                    if video_url:
+                        break
+            
+            if not video_url:
+                raise HTTPException(status_code=400, detail="No video URL found for streaming")
+            
+            # Return redirect to the video URL for streaming
+            return RedirectResponse(
+                url=video_url,
+                status_code=307,
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error streaming video: {str(e)}")
 
 
 @app.get("/download/playlist/info")
