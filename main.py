@@ -100,8 +100,11 @@ def check_rate_limit(ip: str) -> bool:
     return True
 
 
-def get_format_string(quality: str, download_type: str) -> str:
+def get_format_string(quality: Optional[str], download_type: Optional[str]) -> str:
     """Convert quality preference to yt-dlp format string."""
+    quality = quality or "best"
+    download_type = download_type or "video"
+    
     if quality == "audio_only" or download_type == "audio":
         return "bestaudio/best"
     
@@ -116,8 +119,10 @@ def get_format_string(quality: str, download_type: str) -> str:
     return quality_map.get(quality, "bestvideo+bestaudio/best")
 
 
-def get_yt_dlp_opts(output_path: str, format_str: str, audio_format: str = "best") -> dict:
+def get_yt_dlp_opts(output_path: str, format_str: str, audio_format: Optional[str] = None) -> dict:
     """Get yt-dlp options dictionary."""
+    audio_format = audio_format or "best"
+    
     opts = {
         "outtmpl": output_path,
         "format": format_str,
@@ -372,8 +377,8 @@ async def download_single(request: Request, download_req: DownloadRequest, backg
     }
 
 
-async def process_download(job_id: str, url: str, quality: str, format_id: Optional[str], 
-                          download_type: str, audio_format: str):
+async def process_download(job_id: str, url: str, quality: Optional[str], format_id: Optional[str], 
+                          download_type: Optional[str], audio_format: Optional[str]):
     """Background task to process video download."""
     try:
         jobs[job_id]["status"] = "processing"
@@ -509,7 +514,7 @@ async def download_batch(request: Request, batch_req: BatchDownloadRequest, back
     }
 
 
-async def process_batch_download(job_id: str, urls: List[str], quality: str, download_type: str, audio_format: str):
+async def process_batch_download(job_id: str, urls: List[str], quality: Optional[str], download_type: Optional[str], audio_format: Optional[str]):
     """Background task to process batch downloads."""
     try:
         jobs[job_id]["status"] = "processing"
@@ -812,8 +817,8 @@ async def download_playlist_select(request: Request, select_req: PlaylistSelectR
     }
 
 
-async def process_playlist_download(job_id: str, url: str, quality: str, format_id: Optional[str],
-                                    download_type: str, audio_format: str, indices: Optional[List[int]]):
+async def process_playlist_download(job_id: str, url: str, quality: Optional[str], format_id: Optional[str],
+                                    download_type: Optional[str], audio_format: Optional[str], indices: Optional[List[int]]):
     """Background task to process playlist download."""
     try:
         jobs[job_id]["status"] = "processing"

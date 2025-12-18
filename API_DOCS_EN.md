@@ -460,6 +460,182 @@ curl "http://localhost:5000/thumbnail?url=https://www.youtube.com/watch?v=VIDEO_
 
 ---
 
+### 12. Batch Download
+
+#### POST /download/batch
+
+Download multiple YouTube videos/audios simultaneously. Returns a single job ID for tracking all downloads.
+
+**Request Body:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| urls | array | Yes | - | List of YouTube URLs (max 10) |
+| quality | string | No | "best" | Quality: best, worst, audio_only, 720p, 1080p, 1440p, 4k |
+| type | string | No | "video" | Type: video, audio, both |
+| audio_format | string | No | "best" | Audio format: mp3, m4a, best |
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:5000/download/batch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": [
+      "https://www.youtube.com/watch?v=VIDEO_ID_1",
+      "https://www.youtube.com/watch?v=VIDEO_ID_2"
+    ],
+    "quality": "1080p",
+    "type": "video"
+  }'
+```
+
+**Response:**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "total_urls": 2,
+  "message": "Batch download started. Use /status/{job_id} to check progress.",
+  "status_url": "/status/550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Error Responses:**
+- `400`: Empty URL list or more than 10 URLs
+- `429`: Rate limit exceeded
+- `500`: Internal server error
+
+---
+
+### 13. Cancel Download Job
+
+#### POST /jobs/{job_id}/cancel
+
+Cancel a running or pending download job. Only jobs with status "pending" or "processing" can be cancelled.
+
+**Path Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| job_id | string | Yes | The job ID to cancel |
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:5000/jobs/550e8400-e29b-41d4-a716-446655440000/cancel"
+```
+
+**Response:**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "cancelled",
+  "message": "Download job has been cancelled",
+  "cancelled_at": "2025-01-15T12:30:45.123456"
+}
+```
+
+**Error Responses:**
+- `404`: Job not found
+- `400`: Job cannot be cancelled (already completed, failed, or cancelled)
+
+---
+
+### 14. List All Jobs
+
+#### GET /jobs
+
+List all download jobs with pagination and filtering. Returns summaries of jobs with their current status and progress.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| skip | integer | No | 0 | Number of jobs to skip (pagination) |
+| limit | integer | No | 10 | Number of jobs to return (1-100) |
+| status | string | No | - | Filter by status: pending, processing, completed, failed, cancelled |
+| type | string | No | - | Filter by type: video, playlist, batch |
+
+**Example Request:**
+```bash
+curl "http://localhost:5000/jobs?skip=0&limit=10&status=completed"
+```
+
+**Response:**
+```json
+{
+  "total": 25,
+  "skip": 0,
+  "limit": 10,
+  "jobs": [
+    {
+      "job_id": "550e8400-e29b-41d4-a716-446655440000",
+      "status": "completed",
+      "type": "batch",
+      "progress": 100,
+      "created_at": "2025-01-15T12:00:00",
+      "files_count": 2,
+      "error_count": 0,
+      "title": null,
+      "total_urls": 2,
+      "completed_count": 2
+    },
+    {
+      "job_id": "660e8400-e29b-41d4-a716-446655440001",
+      "status": "completed",
+      "type": "video",
+      "progress": 100,
+      "created_at": "2025-01-15T11:55:00",
+      "files_count": 1,
+      "error_count": 0,
+      "title": "Video Title",
+      "total_urls": null,
+      "completed_count": null
+    }
+  ],
+  "has_more": true
+}
+```
+
+---
+
+### 15. Stream Video
+
+#### GET /stream/video
+
+Stream a YouTube video directly without saving to disk. Returns a redirect to the video stream URL that can be played in real-time by media players.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| url | string | Yes | - | YouTube video URL |
+| quality | string | No | "best" | Quality: best, worst, 720p, 1080p, 1440p, 4k |
+
+**Example Request:**
+```bash
+curl "http://localhost:5000/stream/video?url=https://www.youtube.com/watch?v=VIDEO_ID&quality=720p"
+```
+
+**Response:**
+- HTTP 307 Redirect with video stream URL
+- Headers: `Cache-Control: no-cache, no-store, must-revalidate`
+- Can be used directly in HTML5 video player or media player applications
+
+**Example Usage:**
+```html
+<video width="640" height="480" controls>
+  <source src="http://localhost:5000/stream/video?url=https://www.youtube.com/watch?v=VIDEO_ID" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+```
+
+**Error Responses:**
+- `400`: Could not extract video information or no valid stream found
+- `429`: Rate limit exceeded
+- `500`: Internal server error
+
+---
+
 ## Error Response Format
 
 All errors follow this format:

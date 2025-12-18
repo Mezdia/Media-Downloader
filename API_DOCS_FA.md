@@ -460,6 +460,121 @@ curl "http://localhost:5000/thumbnail?url=https://www.youtube.com/watch?v=VIDEO_
 
 ---
 
+### 12. دانلود دسته‌ای
+
+#### POST /download/batch
+
+دانلود چند ویدیو/صوت از یوتیوب به‌صورت همزمان. یک شناسه کار برای ردیابی تمام دانلودها برمی‌گرداند.
+
+**درخواست:**
+
+| پارامتر | نوع | الزامی | پیش‌فرض | توضیح |
+|--------|-----|--------|---------|--------|
+| urls | آرایه | بلی | - | لیست URL‌های یوتیوب (حداکثر 10 عنصر) |
+| quality | رشته | خیر | "best" | کیفیت: best, worst, audio_only, 720p, 1080p, 1440p, 4k |
+| type | رشته | خیر | "video" | نوع: video, audio, both |
+| audio_format | رشته | خیر | "best" | فرمت صوت: mp3, m4a, best |
+
+**درخواست نمونه:**
+```bash
+curl -X POST "http://localhost:5000/download/batch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": [
+      "https://www.youtube.com/watch?v=VIDEO_ID_1",
+      "https://www.youtube.com/watch?v=VIDEO_ID_2"
+    ],
+    "quality": "1080p",
+    "type": "video"
+  }'
+```
+
+**پاسخ:**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "total_urls": 2,
+  "message": "Batch download started. Use /status/{job_id} to check progress.",
+  "status_url": "/status/550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+---
+
+### 13. لغو کار دانلود
+
+#### POST /jobs/{job_id}/cancel
+
+لغو کار دانلود در حال اجرا یا در حالت انتظار. تنها کارهایی با وضعیت "pending" یا "processing" می‌توانند لغو شوند.
+
+**درخواست نمونه:**
+```bash
+curl -X POST "http://localhost:5000/jobs/550e8400-e29b-41d4-a716-446655440000/cancel"
+```
+
+**پاسخ:**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "cancelled",
+  "message": "Download job has been cancelled",
+  "cancelled_at": "2025-01-15T12:30:45.123456"
+}
+```
+
+---
+
+### 14. لیست تمام کارها
+
+#### GET /jobs
+
+لیست تمام کارهای دانلود با صفحه‌بندی و فیلتر. خلاصه‌ای از کارها با وضعیت و پیشرفت فعلی برمی‌گرداند.
+
+**پارامترهای درخواست:**
+
+| پارامتر | نوع | الزامی | پیش‌فرض | توضیح |
+|--------|-----|--------|---------|--------|
+| skip | عدد صحیح | خیر | 0 | تعداد کارهای جابه‌جا شده (صفحه‌بندی) |
+| limit | عدد صحیح | خیر | 10 | تعداد کارهای بازگشتی (1-100) |
+| status | رشته | خیر | - | فیلتر بر اساس وضعیت: pending, processing, completed, failed, cancelled |
+| type | رشته | خیر | - | فیلتر بر اساس نوع: video, playlist, batch |
+
+**درخواست نمونه:**
+```bash
+curl "http://localhost:5000/jobs?skip=0&limit=10&status=completed"
+```
+
+---
+
+### 15. استریم ویدیو
+
+#### GET /stream/video
+
+استریم مستقیم ویدیو بدون ذخیره بر روی دیسک. به URL جریان ویدیویی برمی‌گردد که می‌توان به‌صورت آنی در پخش‌کننده‌های رسانه‌ای پخش کرد.
+
+**پارامترهای درخواست:**
+
+| پارامتر | نوع | الزامی | پیش‌فرض | توضیح |
+|--------|-----|--------|---------|--------|
+| url | رشته | بلی | - | URL ویدیوی یوتیوب |
+| quality | رشته | خیر | "best" | کیفیت: best, worst, 720p, 1080p, 1440p, 4k |
+
+**درخواست نمونه:**
+```bash
+curl "http://localhost:5000/stream/video?url=https://www.youtube.com/watch?v=VIDEO_ID&quality=720p"
+```
+
+**استفاده در HTML5:**
+```html
+<video width="640" height="480" controls>
+  <source src="http://localhost:5000/stream/video?url=https://www.youtube.com/watch?v=VIDEO_ID" type="video/mp4">
+  مرورگر شما از تگ ویدیو پشتیبانی نمی‌کند.
+</video>
+```
+
+---
+
 ## فرمت پاسخ خطا
 
 تمام خطاها از این فرمت پیروی می‌کنند:
