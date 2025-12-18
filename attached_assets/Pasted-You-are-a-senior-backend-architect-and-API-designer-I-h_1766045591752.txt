@@ -1,0 +1,138 @@
+You are a senior backend architect and API designer.
+
+I have an existing production-ready FastAPI project: a YouTube Downloader API.
+The current API supports:
+- Metadata extraction
+- Format listing
+- Single & playlist downloads
+- Background jobs with job_id
+- Status tracking
+- File serving
+- Rate limiting
+- Structured error handling
+- Persian/English documentation style
+
+I want to EXTEND this project by adding FULL Instagram support, while keeping:
+- The same architectural patterns
+- Similar endpoint naming conventions
+- Same job-based async download model
+- Same response formats and error structure
+- Same level of documentation detail
+
+Your task:
+Design a COMPLETE Instagram Downloader & Info API module.
+
+--------------------------------------------------
+GENERAL REQUIREMENTS
+--------------------------------------------------
+1. Use FastAPI-style REST endpoints
+2. All download operations must be async and return job_id
+3. Use /status/{job_id} for progress tracking (reuse existing logic)
+4. Responses must be JSON
+5. Include realistic fields (counts, ids, urls, thumbnails, etc.)
+6. Follow Instagram terminology precisely
+7. Assume public content only
+8. Design as if yt-dlp / instaloader-like tools are used internally
+9. Provide endpoints + request/response examples
+10. Everything must be production-grade
+
+--------------------------------------------------
+INSTAGRAM CONTENT TYPES TO SUPPORT
+--------------------------------------------------
+You MUST support ALL of the following:
+
+1. Single Post
+   - Image post
+   - Video post
+   - Carousel (multiple images/videos)
+
+2. Reels
+   - Video download
+   - Audio extraction
+   - View count, like count, comment count
+
+3. Stories
+   - Single story download
+   - Multiple active stories
+   - Image & video stories
+
+4. Profile / Page Info
+   - Username
+   - User ID
+   - Bio
+   - Profile picture (all resolutions)
+   - Followers count
+   - Following count
+   - Total posts count
+   - Is verified
+   - Is private
+   - External links
+
+5. Profile Content Listing
+   - Latest posts
+   - Latest reels
+   - Pagination support
+
+6. Statistics (Public Only)
+   - Post views
+   - Reel views
+   - Likes count
+   - Comments count
+   - Engagement metrics (if available)
+
+--------------------------------------------------
+REQUIRED ENDPOINTS (DESIGN THEM)
+--------------------------------------------------
+
+You must design endpoints similar to YouTube API style, such as:
+
+- GET  /instagram/info
+- GET  /instagram/profile/info
+- GET  /instagram/profile/posts
+- GET  /instagram/profile/reels
+- GET  /instagram/formats
+- POST /instagram/download/post
+- POST /instagram/download/reel
+- POST /instagram/download/story
+- POST /instagram/download/batch
+- GET  /instagram/status/{job_id}
+- GET  /instagram/download/file/{filename}
+
+You may propose additional endpoints if needed.
+
+--------------------------------------------------
+DOWNLOAD FEATURES
+--------------------------------------------------
+For downloads, support:
+- Best quality
+- Video only
+- Audio only (for reels)
+- Original resolution images
+- Carousel extraction as ZIP
+- Automatic file naming
+- Temporary storage with cleanup
+
+--------------------------------------------------
+DOCUMENTATION FORMAT
+--------------------------------------------------
+For EACH endpoint, provide:
+1. Short description
+2. HTTP method + path
+3. Query params or JSON body (table format)
+4. Example request (curl)
+5. Example success response
+6. Possible error responses
+
+Use the SAME style as a professional API documentation.
+
+--------------------------------------------------
+OUTPUT
+--------------------------------------------------
+Return:
+1. A complete Instagram API documentation section
+2. Clearly separated from YouTube
+3. Ready to be merged into an existing API docs file
+4. No explanations outside the documentation itself
+
+Do NOT write implementation code.
+ONLY design the API, endpoints, and documentation.
