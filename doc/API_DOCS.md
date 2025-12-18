@@ -4,6 +4,17 @@ Designed by Mezd and powered by Mezdia.
 
 Complete API reference for the YouTube & Instagram Downloader API.
 
+## Web Interface
+
+A modern, responsive web interface is available at the root URL (`/`) that provides access to all API endpoints through an intuitive UI. The interface supports:
+
+- **Platform Switching**: Toggle between YouTube and Instagram features
+- **Multi-language Support**: English and Persian (Farsi) languages
+- **Visual & JSON Views**: Switch between user-friendly visual cards and raw JSON responses
+- **Real-time Job Monitoring**: Track download progress and manage jobs
+- **Batch Operations**: Download multiple videos simultaneously
+- **Stream Support**: Direct video streaming capabilities
+
 ## Base URL
 
 ```

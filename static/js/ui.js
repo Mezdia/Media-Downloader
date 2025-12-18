@@ -26,14 +26,21 @@ const UI = {
             getSubtitles: "Get Subtitles",
             getThumbnail: "Get Thumbnail",
             getPosts: "Get Posts",
+            getStats: "Get Statistics",
             download: "Download",
             downloadAll: "Download All",
+            downloadSelected: "Download Selected",
+            downloadCarousel: "Download Carousel (ZIP)",
             startBatch: "Start Batch Download",
+            startDownload: "Start Download",
             startStream: "Start Stream",
+            selectDownload: "Select Videos",
+            videoIndices: "Video Indices (comma-separated, e.g., 0,2,5)",
             visual: "Visual",
             json: "JSON",
             quality: "Quality",
             type: "Type",
+            format: "Format",
             audioFormat: "Audio Format",
             language: "Language",
             filterJobs: "Filter Jobs",
@@ -47,6 +54,7 @@ const UI = {
             profile: "Profile",
             stories: "Stories",
             reels: "Reels",
+            carousel: "Carousel",
             posts: "Posts",
             username: "Username",
             formats: "Formats",
@@ -69,14 +77,21 @@ const UI = {
             getSubtitles: "دریافت زیرنویس‌ها",
             getThumbnail: "دریافت تصویر بندانگشتی",
             getPosts: "دریافت پست‌ها",
+            getStats: "دریافت آمار",
             download: "دانلود",
             downloadAll: "دانلود همه",
+            downloadSelected: "دانلود انتخاب‌شده‌ها",
+            downloadCarousel: "دانلود کاروسل (ZIP)",
             startBatch: "شروع دانلود دسته‌جمعی",
+            startDownload: "شروع دانلود",
             startStream: "شروع پخش",
+            selectDownload: "انتخاب ویدیوها",
+            videoIndices: "شاخص ویدیوها (با کاما جدا شده، مثلاً 0,2,5)",
             visual: "تصویری",
             json: "کد JSON",
             quality: "کیفیت",
             type: "نوع",
+            format: "فرمت",
             audioFormat: "فرمت صدا",
             language: "زبان",
             filterJobs: "فیلتر وظایف",
@@ -90,6 +105,7 @@ const UI = {
             profile: "پروفایل",
             stories: "استوری‌ها",
             reels: "ریلز",
+            carousel: "کاروسل",
             posts: "پست‌ها",
             username: "نام کاربری",
             formats: "فرمت‌ها",
@@ -132,12 +148,26 @@ const UI = {
                 'ig-reel': document.getElementById('feature-ig-reel'),
                 'ig-profile': document.getElementById('feature-ig-profile'),
                 'ig-stories': document.getElementById('feature-ig-stories'),
+                'ig-carousel': document.getElementById('feature-ig-carousel'),
+                'ig-post-stats': document.getElementById('feature-ig-post-stats'),
+                'ig-reel-stats': document.getElementById('feature-ig-reel-stats'),
                 'ig-batch': document.getElementById('feature-ig-batch'),
                 'ig-jobs': document.getElementById('feature-ig-jobs')
             },
             results: document.getElementById('results-area'),
             loading: document.getElementById('loading-overlay')
         };
+          // API Console elements (if present)
+          this.dom.apiBaseInput = document.getElementById('api-base');
+          this.dom.apiEndpointSelect = document.getElementById('api-endpoint');
+          this.dom.apiMethodSelect = document.getElementById('api-method');
+          this.dom.apiParamsInput = document.getElementById('api-params');
+          this.dom.apiBodyTextarea = document.getElementById('api-body');
+          this.dom.apiSendBtn = document.getElementById('api-send');
+          this.dom.apiCopyCurlBtn = document.getElementById('api-copy-curl');
+          this.dom.apiClearBtn = document.getElementById('api-clear');
+          this.dom.apiResponseArea = document.getElementById('api-response-area');
+          this.dom.apiHistoryList = document.getElementById('api-history-list');
     },
 
     bindEvents() {
@@ -185,19 +215,72 @@ const UI = {
         if (document.getElementById('btn-yt-stream')) {
             document.getElementById('btn-yt-stream').addEventListener('click', () => this.handleYtStream());
         }
+        if (document.getElementById('btn-yt-download')) {
+            document.getElementById('btn-yt-download').addEventListener('click', () => this.toggleVideoDownloadForm());
+        }
+        if (document.getElementById('btn-yt-start-download')) {
+            document.getElementById('btn-yt-start-download').addEventListener('click', () => this.handleYtStartDownload());
+        }
+        if (document.getElementById('btn-yt-playlist-download-all')) {
+            document.getElementById('btn-yt-playlist-download-all').addEventListener('click', () => this.handleYtPlaylistDownloadAll());
+        }
+        if (document.getElementById('btn-yt-playlist-select')) {
+            document.getElementById('btn-yt-playlist-select').addEventListener('click', () => this.togglePlaylistSelectForm());
+        }
+        if (document.getElementById('btn-yt-playlist-download-select')) {
+            document.getElementById('btn-yt-playlist-download-select').addEventListener('click', () => this.handleYtPlaylistDownloadSelect());
+        }
+
+            // API Console events
+            if (this.dom.apiSendBtn) {
+                this.dom.apiSendBtn.addEventListener('click', () => this.sendApiTestRequest());
+            }
+            if (this.dom.apiCopyCurlBtn) {
+                this.dom.apiCopyCurlBtn.addEventListener('click', () => this.copyCurlToClipboard());
+            }
+            if (this.dom.apiClearBtn) {
+                this.dom.apiClearBtn.addEventListener('click', () => this.clearApiConsole());
+            }
+            if (this.dom.apiBaseInput) {
+                this.dom.apiBaseInput.addEventListener('change', (e) => {
+                    const val = e.target.value.trim();
+                    if (typeof window !== 'undefined') window.API_BASE = val;
+                });
+            }
 
         // Instagram Button Events
         if (document.getElementById('btn-ig-post-info')) {
             document.getElementById('btn-ig-post-info').addEventListener('click', () => this.handleIgPostInfo());
         }
+        if (document.getElementById('btn-ig-post-download')) {
+            document.getElementById('btn-ig-post-download').addEventListener('click', () => this.handleIgPostDownload());
+        }
         if (document.getElementById('btn-ig-reel-info')) {
             document.getElementById('btn-ig-reel-info').addEventListener('click', () => this.handleIgReelInfo());
+        }
+        if (document.getElementById('btn-ig-reel-download')) {
+            document.getElementById('btn-ig-reel-download').addEventListener('click', () => this.handleIgReelDownload());
         }
         if (document.getElementById('btn-ig-profile-info')) {
             document.getElementById('btn-ig-profile-info').addEventListener('click', () => this.handleIgProfileInfo());
         }
+        if (document.getElementById('btn-ig-profile-posts')) {
+            document.getElementById('btn-ig-profile-posts').addEventListener('click', () => this.handleIgProfilePosts());
+        }
         if (document.getElementById('btn-ig-stories-info')) {
             document.getElementById('btn-ig-stories-info').addEventListener('click', () => this.handleIgStoriesInfo());
+        }
+        if (document.getElementById('btn-ig-stories-download')) {
+            document.getElementById('btn-ig-stories-download').addEventListener('click', () => this.handleIgStoriesDownload());
+        }
+        if (document.getElementById('btn-ig-carousel-download')) {
+            document.getElementById('btn-ig-carousel-download').addEventListener('click', () => this.handleIgCarouselDownload());
+        }
+        if (document.getElementById('btn-ig-post-stats')) {
+            document.getElementById('btn-ig-post-stats').addEventListener('click', () => this.handleIgPostStats());
+        }
+        if (document.getElementById('btn-ig-reel-stats')) {
+            document.getElementById('btn-ig-reel-stats').addEventListener('click', () => this.handleIgReelStats());
         }
         if (document.getElementById('btn-ig-batch-download')) {
             document.getElementById('btn-ig-batch-download').addEventListener('click', () => this.handleIgBatchDownload());
@@ -421,6 +504,82 @@ const UI = {
         }
     },
 
+    toggleVideoDownloadForm() {
+        const form = document.getElementById('video-download-form');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    },
+
+    async handleYtStartDownload() {
+        const url = document.getElementById('yt-url').value.trim();
+        const quality = document.getElementById('yt-download-quality').value;
+        const type = document.getElementById('yt-download-type').value;
+        if (!url) return this.showError('Please enter a URL');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.startDownload({
+                url: url,
+                quality: quality,
+                type: type
+            });
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    async handleYtPlaylistDownloadAll() {
+        const url = document.getElementById('yt-playlist-url').value.trim();
+        if (!url) return this.showError('Please enter a playlist URL');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.startPlaylistDownloadAll({
+                url: url,
+                quality: 'best',
+                type: 'video'
+            });
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    togglePlaylistSelectForm() {
+        const form = document.getElementById('playlist-select-form');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    },
+
+    async handleYtPlaylistDownloadSelect() {
+        const url = document.getElementById('yt-playlist-url').value.trim();
+        const indicesStr = document.getElementById('yt-playlist-video-indices').value.trim();
+        const quality = document.getElementById('yt-playlist-select-quality').value;
+        if (!url) return this.showError('Please enter a playlist URL');
+        if (!indicesStr) return this.showError('Please enter video indices');
+
+        const videoIndices = indicesStr.split(',').map(i => parseInt(i.trim())).filter(i => !isNaN(i));
+        if (videoIndices.length === 0) return this.showError('Invalid video indices');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.startPlaylistDownloadSelect({
+                url: url,
+                video_indices: videoIndices,
+                quality: quality,
+                type: 'video'
+            });
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
     // Instagram Handlers
     async handleIgPostInfo() {
         const url = document.getElementById('ig-post-url').value.trim();
@@ -503,8 +662,134 @@ const UI = {
     async handleIgRefreshJobs() {
         this.showLoading(true);
         try {
-            const data = await Api.getIgJobStatus('all');
+            const data = await Api.getAllIgJobs();
             this.renderJobs(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    async handleIgStoriesDownload() {
+        const username = document.getElementById('ig-stories-username').value.trim();
+        if (!username) return this.showError('Please enter a username');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.startIgStoriesDownload({ username });
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    async handleIgCarouselDownload() {
+        const url = document.getElementById('ig-carousel-url').value.trim();
+        const quality = document.getElementById('ig-carousel-quality').value;
+        if (!url) return this.showError('Please enter a carousel URL');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.startIgCarouselDownload({ url, quality });
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    async handleIgPostStats() {
+        const url = document.getElementById('ig-post-stats-url').value.trim();
+        if (!url) return this.showError('Please enter a post URL');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.getIgPostStats(url);
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    async handleIgReelStats() {
+        const url = document.getElementById('ig-reel-stats-url').value.trim();
+        if (!url) return this.showError('Please enter a reel URL');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.getIgReelStats(url);
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    async handleIgPostDownload() {
+        const url = document.getElementById('ig-post-url').value.trim();
+        if (!url) return this.showError('Please enter a post URL');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.startIgPostDownload({ url });
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    async handleIgReelDownload() {
+        const url = document.getElementById('ig-reel-url').value.trim();
+        if (!url) return this.showError('Please enter a reel URL');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.startIgReelDownload({ url });
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    async handleIgProfilePosts() {
+        const username = document.getElementById('ig-username').value.trim();
+        if (!username) return this.showError('Please enter a username');
+
+        this.showLoading(true);
+        try {
+            const data = await Api.getIgProfilePosts(username);
+            this.renderResult(data);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    async handleIgBatchDownload() {
+        const itemsText = document.getElementById('ig-batch-items').value.trim();
+        const quality = document.getElementById('ig-batch-quality').value;
+        const format = document.getElementById('ig-batch-format').value;
+        if (!itemsText) return this.showError('Please enter batch items');
+
+        try {
+            const items = JSON.parse(itemsText);
+            if (!Array.isArray(items)) return this.showError('Invalid JSON format');
+
+            this.showLoading(true);
+            const data = await Api.startIgBatchDownload({ items, quality, format });
+            this.renderResult(data);
         } catch (error) {
             this.showError(error.message);
         } finally {
@@ -548,7 +833,7 @@ const UI = {
         }
 
         container.innerHTML = jobs.map(job => `
-            <div class="job-item">
+            <div class="job-item" data-job-id="${job.job_id}">
                 <div class="job-header">
                     <span class="job-id">Job: ${job.job_id}</span>
                     <span class="job-status ${job.status}">${job.status}</span>
@@ -562,7 +847,7 @@ const UI = {
                     ${job.title ? `<p><strong>Title:</strong> ${job.title}</p>` : ''}
                 </div>
                 <div class="job-actions">
-                    ${job.status === 'completed' ? `
+                    ${job.status === 'completed' && job.files && job.files.length > 0 ? `
                         <button class="job-btn download" onclick="UI.downloadJobFile('${job.job_id}')">
                             <i class="fas fa-download"></i> Download
                         </button>
@@ -678,20 +963,132 @@ const UI = {
         });
     },
 
+        // --- API Console Helpers ---
+        async sendApiTestRequest() {
+            if (!this.dom.apiEndpointSelect) return;
+            const base = (this.dom.apiBaseInput && this.dom.apiBaseInput.value.trim()) || (typeof window !== 'undefined' ? window.API_BASE || '' : '');
+            let endpoint = this.dom.apiEndpointSelect.value || '';
+            const params = (this.dom.apiParamsInput && this.dom.apiParamsInput.value.trim()) || '';
+            const method = (this.dom.apiMethodSelect && this.dom.apiMethodSelect.value) || 'GET';
+            const bodyText = (this.dom.apiBodyTextarea && this.dom.apiBodyTextarea.value.trim()) || '';
+
+            // Build URL
+            let url = endpoint;
+            if (params) {
+                // if endpoint already contains =, append params directly, else add ?
+                if (endpoint.includes('?') || params.startsWith('?')) url = `${endpoint}${params}`;
+                else if (endpoint.endsWith('=')) url = `${endpoint}${encodeURIComponent(params)}`;
+                else url = `${endpoint}${params.startsWith('?') ? params : '?' + params}`;
+            }
+            const fullUrl = base ? (base.replace(/\/$/, '') + (url.startsWith('/') ? url : '/' + url)) : url;
+
+            const opts = { method };
+            if (method !== 'GET' && bodyText) {
+                try { opts.body = JSON.stringify(JSON.parse(bodyText)); }
+                catch (e) { opts.body = bodyText; }
+                opts.headers = { 'Content-Type': 'application/json' };
+            }
+
+            this.dom.apiResponseArea.textContent = 'Loading...';
+            try {
+                const resp = await fetch(fullUrl, opts);
+                let data;
+                try { data = await resp.json(); } catch (e) { data = await resp.text(); }
+                const display = (typeof data === 'string') ? data : JSON.stringify(data, null, 2);
+                this.dom.apiResponseArea.innerHTML = `<pre>${this.syntaxHighlight(display)}</pre>`;
+                this.addApiHistory({ url: fullUrl, method, ok: resp.ok, status: resp.status, timestamp: new Date().toISOString() });
+            } catch (err) {
+                this.dom.apiResponseArea.innerHTML = `<div class="error-msg">${err.message}</div>`;
+            }
+        },
+
+        copyCurlToClipboard() {
+            if (!this.dom.apiEndpointSelect) return;
+            const base = (this.dom.apiBaseInput && this.dom.apiBaseInput.value.trim()) || (typeof window !== 'undefined' ? window.API_BASE || '' : '');
+            let endpoint = this.dom.apiEndpointSelect.value || '';
+            const params = (this.dom.apiParamsInput && this.dom.apiParamsInput.value.trim()) || '';
+            const method = (this.dom.apiMethodSelect && this.dom.apiMethodSelect.value) || 'GET';
+            const bodyText = (this.dom.apiBodyTextarea && this.dom.apiBodyTextarea.value.trim()) || '';
+
+            let url = endpoint;
+            if (params) {
+                if (endpoint.includes('?') || params.startsWith('?')) url = `${endpoint}${params}`;
+                else if (endpoint.endsWith('=')) url = `${endpoint}${encodeURIComponent(params)}`;
+                else url = `${endpoint}${params.startsWith('?') ? params : '?' + params}`;
+            }
+            const fullUrl = base ? (base.replace(/\/$/, '') + (url.startsWith('/') ? url : '/' + url)) : url;
+
+            let curl = `curl -X ${method} "${fullUrl}"`;
+            if (bodyText && method !== 'GET') curl += ` -H "Content-Type: application/json" -d '${bodyText}'`;
+
+            if (navigator.clipboard) navigator.clipboard.writeText(curl).then(() => {
+                this.showSuccess('cURL copied to clipboard');
+            }).catch(() => {
+                this.showError('Failed to copy cURL');
+            });
+        },
+
+        clearApiConsole() {
+            if (this.dom.apiResponseArea) this.dom.apiResponseArea.innerHTML = 'No response yet.';
+            if (this.dom.apiHistoryList) this.dom.apiHistoryList.innerHTML = 'No history.';
+        },
+
+        addApiHistory(entry) {
+            if (!this.dom.apiHistoryList) return;
+            const row = document.createElement('div');
+            row.style.padding = '0.35rem 0';
+            row.innerHTML = `<strong style="color:${entry.ok ? 'var(--success)' : 'var(--error)'}">${entry.method}</strong> <span style="color:var(--text-muted)"> ${entry.url}</span> <span style="float:right;color:var(--text-muted);font-size:0.85rem">${entry.status || ''} ${new Date(entry.timestamp).toLocaleTimeString()}</span>`;
+            if (this.dom.apiHistoryList.innerHTML === 'No history.') this.dom.apiHistoryList.innerHTML = '';
+            this.dom.apiHistoryList.prepend(row);
+        },
+
     // Additional helper methods
-    downloadJobFile(jobId) {
-        // Implement file download logic
-        console.log('Download job:', jobId);
+    async downloadJobFile(jobId) {
+        try {
+            const status = await Api.getJobStatus(jobId);
+            if (status.files && status.files.length > 0) {
+                // Download the first file (or handle multiple)
+                const file = status.files[0];
+                window.open(file.download_url, '_blank');
+            } else {
+                this.showError('No files available for download');
+            }
+        } catch (error) {
+            this.showError('Failed to get job status: ' + error.message);
+        }
     },
 
-    cancelJob(jobId) {
-        // Implement job cancellation
-        console.log('Cancel job:', jobId);
+    async cancelJob(jobId) {
+        if (!confirm('Are you sure you want to cancel this job?')) return;
+
+        try {
+            const result = await Api.cancelJob(jobId);
+            this.showSuccess('Job cancelled successfully');
+            // Refresh the jobs list
+            this.handleRefreshJobs();
+        } catch (error) {
+            this.showError('Failed to cancel job: ' + error.message);
+        }
     },
 
-    refreshJobStatus(jobId) {
-        // Implement status refresh
-        console.log('Refresh job:', jobId);
+    async refreshJobStatus(jobId) {
+        try {
+            const status = await Api.getJobStatus(jobId);
+            // Update the specific job in the list
+            const jobElement = document.querySelector(`[data-job-id="${jobId}"]`);
+            if (jobElement) {
+                // Update progress, status, etc.
+                const progressBar = jobElement.querySelector('.job-progress-bar');
+                const statusBadge = jobElement.querySelector('.job-status');
+                if (progressBar) progressBar.style.width = `${status.progress || 0}%`;
+                if (statusBadge) {
+                    statusBadge.className = `job-status ${status.status}`;
+                    statusBadge.textContent = status.status;
+                }
+            }
+        } catch (error) {
+            this.showError('Failed to refresh job status: ' + error.message);
+        }
     }
 };
 

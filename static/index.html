@@ -92,13 +92,42 @@
                             <input type="text" id="yt-url" placeholder="https://youtube.com/watch?v=...">
                         </div>
                         <div class="button-group">
-                            <button id="btn-yt-info" class="action-btn">
+                            <button id="btn-yt-info" class="action-btn" title="Get video information and metadata">
                                 <i class="fas fa-info-circle"></i>
                                 <span data-i18n="getInfo">Get Info</span>
                             </button>
-                            <button id="btn-yt-formats" class="action-btn secondary">
+                            <button id="btn-yt-formats" class="action-btn secondary" title="Get available video formats and qualities">
                                 <i class="fas fa-cog"></i>
                                 <span data-i18n="getFormats">Get Formats</span>
+                            </button>
+                            <button id="btn-yt-download" class="action-btn tertiary" title="Configure download options">
+                                <i class="fas fa-download"></i>
+                                <span data-i18n="download">Download</span>
+                            </button>
+                        </div>
+                        <!-- Download Form (hidden by default) -->
+                        <div id="video-download-form" class="video-download-form" style="display: none;">
+                            <div class="form-group">
+                                <label for="yt-download-quality" data-i18n="quality">Quality</label>
+                                <select id="yt-download-quality">
+                                    <option value="best">Best</option>
+                                    <option value="720p">720p</option>
+                                    <option value="1080p">1080p</option>
+                                    <option value="1440p">1440p</option>
+                                    <option value="4k">4K</option>
+                                    <option value="audio_only">Audio Only</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="yt-download-type" data-i18n="type">Type</label>
+                                <select id="yt-download-type">
+                                    <option value="video">Video</option>
+                                    <option value="audio">Audio</option>
+                                </select>
+                            </div>
+                            <button id="btn-yt-start-download" class="action-btn">
+                                <i class="fas fa-play"></i>
+                                <span data-i18n="startDownload">Start Download</span>
                             </button>
                         </div>
                     </div>
@@ -114,9 +143,33 @@
                                 <i class="fas fa-info-circle"></i>
                                 <span data-i18n="getInfo">Get Info</span>
                             </button>
-                            <button id="btn-yt-playlist-download" class="action-btn secondary">
+                            <button id="btn-yt-playlist-download-all" class="action-btn secondary">
                                 <i class="fas fa-download"></i>
                                 <span data-i18n="downloadAll">Download All</span>
+                            </button>
+                            <button id="btn-yt-playlist-select" class="action-btn tertiary">
+                                <i class="fas fa-list-check"></i>
+                                <span data-i18n="selectDownload">Select Videos</span>
+                            </button>
+                        </div>
+                        <!-- Playlist Select Form (hidden by default) -->
+                        <div id="playlist-select-form" class="playlist-select-form" style="display: none;">
+                            <div class="form-group">
+                                <label for="yt-playlist-video-indices" data-i18n="videoIndices">Video Indices (comma-separated, e.g., 0,2,5)</label>
+                                <input type="text" id="yt-playlist-video-indices" placeholder="0,2,5">
+                            </div>
+                            <div class="form-group">
+                                <label for="yt-playlist-select-quality" data-i18n="quality">Quality</label>
+                                <select id="yt-playlist-select-quality">
+                                    <option value="best">Best</option>
+                                    <option value="720p">720p</option>
+                                    <option value="1080p">1080p</option>
+                                    <option value="audio_only">Audio Only</option>
+                                </select>
+                            </div>
+                            <button id="btn-yt-playlist-download-select" class="action-btn">
+                                <i class="fas fa-download"></i>
+                                <span data-i18n="downloadSelected">Download Selected</span>
                             </button>
                         </div>
                     </div>
@@ -308,9 +361,59 @@
                             <label for="ig-stories-username" data-i18n="username">Username</label>
                             <input type="text" id="ig-stories-username" placeholder="instagram">
                         </div>
-                        <button id="btn-ig-stories-info" class="action-btn">
-                            <i class="fas fa-info-circle"></i>
-                            <span data-i18n="getInfo">Get Stories Info</span>
+                        <div class="button-group">
+                            <button id="btn-ig-stories-info" class="action-btn">
+                                <i class="fas fa-info-circle"></i>
+                                <span data-i18n="getInfo">Get Stories Info</span>
+                            </button>
+                            <button id="btn-ig-stories-download" class="action-btn secondary">
+                                <i class="fas fa-download"></i>
+                                <span data-i18n="download">Download Stories</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Carousel Tab -->
+                    <div id="feature-ig-carousel" class="feature-section">
+                        <div class="form-group">
+                            <label for="ig-carousel-url" data-i18n="enterUrl">Enter Carousel URL...</label>
+                            <input type="text" id="ig-carousel-url" placeholder="https://instagram.com/p/...">
+                        </div>
+                        <div class="form-group">
+                            <label for="ig-carousel-quality" data-i18n="quality">Quality</label>
+                            <select id="ig-carousel-quality">
+                                <option value="best">Best</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                            </select>
+                        </div>
+                        <button id="btn-ig-carousel-download" class="action-btn">
+                            <i class="fas fa-download"></i>
+                            <span data-i18n="downloadCarousel">Download Carousel (ZIP)</span>
+                        </button>
+                    </div>
+
+                    <!-- Post Stats Tab -->
+                    <div id="feature-ig-post-stats" class="feature-section">
+                        <div class="form-group">
+                            <label for="ig-post-stats-url" data-i18n="enterUrl">Enter Post URL...</label>
+                            <input type="text" id="ig-post-stats-url" placeholder="https://instagram.com/p/...">
+                        </div>
+                        <button id="btn-ig-post-stats" class="action-btn">
+                            <i class="fas fa-chart-bar"></i>
+                            <span data-i18n="getStats">Get Post Statistics</span>
+                        </button>
+                    </div>
+
+                    <!-- Reel Stats Tab -->
+                    <div id="feature-ig-reel-stats" class="feature-section">
+                        <div class="form-group">
+                            <label for="ig-reel-stats-url" data-i18n="enterUrl">Enter Reel URL...</label>
+                            <input type="text" id="ig-reel-stats-url" placeholder="https://instagram.com/reel/...">
+                        </div>
+                        <button id="btn-ig-reel-stats" class="action-btn">
+                            <i class="fas fa-chart-bar"></i>
+                            <span data-i18n="getStats">Get Reel Statistics</span>
                         </button>
                     </div>
 
@@ -318,7 +421,22 @@
                     <div id="feature-ig-batch" class="feature-section">
                         <div class="form-group">
                             <label for="ig-batch-items" data-i18n="batchItems">Batch Items (JSON format)</label>
-                            <textarea id="ig-batch-items" rows="5" placeholder='[{"url": "https://instagram.com/p/...", "type": "post"}]'></textarea>
+                            <textarea id="ig-batch-items" rows="5" placeholder='[{"url": "https://instagram.com/p/...", "type": "post"}, {"url": "https://instagram.com/reel/...", "type": "reel"}]'></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="ig-batch-quality" data-i18n="quality">Quality</label>
+                            <select id="ig-batch-quality">
+                                <option value="best">Best</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ig-batch-format" data-i18n="format">Format</label>
+                            <select id="ig-batch-format">
+                                <option value="individual">Individual Files</option>
+                                <option value="zip">ZIP Archive</option>
+                            </select>
                         </div>
                         <button id="btn-ig-batch-download" class="action-btn">
                             <i class="fas fa-download"></i>
@@ -354,8 +472,88 @@
                 </div>
 
             </section>
+
+            <!-- API Console (New) -->
+            <aside id="api-console" class="api-console">
+                <div class="api-console-header">
+                    <h3>API Console</h3>
+                    <div class="api-console-sub">Test endpoints, send requests, view responses</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="api-base">API Base URL</label>
+                    <input id="api-base" placeholder="/ or https://api.example.com" value="">
+                </div>
+
+                <div class="form-group">
+                    <label for="api-endpoint">Endpoint</label>
+                    <select id="api-endpoint">
+                        <option value="/info?url=">YouTube: Get Info (/info?url=)</option>
+                        <option value="/formats?url=">YouTube: Get Formats (/formats?url=)</option>
+                        <option value="/download/single">YouTube: Start Download (POST /download/single)</option>
+                        <option value="/download/batch">YouTube: Start Batch (POST /download/batch)</option>
+                        <option value="/thumbnail?url=">YouTube: Thumbnail (/thumbnail?url=)</option>
+                        <option value="/subtitles?url=">YouTube: Subtitles (/subtitles?url=)</option>
+                        <option value="/stream/video?url=">YouTube: Stream (/stream/video?url=)</option>
+                        <option value="/instagram/post/info?url=">IG: Post Info (/instagram/post/info?url=)</option>
+                        <option value="/instagram/reel/info?url=">IG: Reel Info (/instagram/reel/info?url=)</option>
+                        <option value="/instagram/download/post">IG: Download Post (POST /instagram/download/post)</option>
+                        <option value="/instagram/download/reel">IG: Download Reel (POST /instagram/download/reel)</option>
+                        <option value="/health">Health Check (/health)</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex:1">
+                        <label for="api-method">Method</label>
+                        <select id="api-method">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1; margin-left: 0.75rem;">
+                        <label for="api-params">Query / URL Params</label>
+                        <input id="api-params" placeholder="e.g. url=https://... or ?limit=10">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="api-body">JSON Body (for POST)</label>
+                    <textarea id="api-body" rows="6" placeholder='{"url":"https://...","quality":"best"}'></textarea>
+                </div>
+
+                <div class="button-group" style="margin-bottom: 1rem;">
+                    <button id="api-send" class="action-btn">Send Request</button>
+                    <button id="api-copy-curl" class="action-btn secondary">Copy cURL</button>
+                    <button id="api-clear" class="action-btn tertiary">Clear</button>
+                </div>
+
+                <div class="api-response">
+                    <div class="result-header"><h4>Response</h4></div>
+                    <div id="api-response-area" class="json-viewer">No response yet.</div>
+                </div>
+
+                <div class="api-history">
+                    <div class="result-header"><h4>History</h4></div>
+                    <div id="api-history-list" style="color:var(--text-muted); font-size:0.9rem;">No history.</div>
+                </div>
+            </aside>
         </main>
     </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <p>Designed by <span class="highlight">Mezd</span> and powered by <span class="highlight">Mezdia</span>.</p>
+            <div class="footer-decoration">
+                <div class="decoration-line"></div>
+                <i class="fas fa-code"></i>
+                <div class="decoration-line"></div>
+            </div>
+        </div>
+    </footer>
 
     <!-- Scripts -->
     <script src="js/api.js"></script>

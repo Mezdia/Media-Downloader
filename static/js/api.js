@@ -8,10 +8,11 @@ const API_BASE = '';
 class Api {
     static async request(endpoint, options = {}) {
         try {
-            const response = await fetch(`${API_BASE}${endpoint}`, options);
+            const base = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE : API_BASE;
+            const url = `${base}${endpoint}`;
+            const response = await fetch(url, options);
             const data = await response.json();
             if (!response.ok) {
-                // Handle specific HTTP errors if needed
                 throw new Error(data.detail || `API Error: ${response.status}`);
             }
             return data;
@@ -77,6 +78,22 @@ class Api {
         return this.request(`/stream/video?url=${encodeURIComponent(url)}&quality=${quality}`);
     }
 
+    static async startPlaylistDownloadAll(payload) {
+        return this.request('/download/playlist/all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    }
+
+    static async startPlaylistDownloadSelect(payload) {
+        return this.request('/download/playlist/select', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    }
+
     // --- Instagram Endpoints ---
 
     static async getIgPostInfo(url) {
@@ -115,11 +132,55 @@ class Api {
         });
     }
 
-    static async startIgBatchDownload(items) {
+    static async startIgPostDownload(payload) {
+        return this.request('/instagram/download/post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    }
+
+    static async startIgReelDownload(payload) {
+        return this.request('/instagram/download/reel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    }
+
+    static async startIgStoriesDownload(payload) {
+        return this.request('/instagram/download/story', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    }
+
+    static async startIgCarouselDownload(payload) {
+        return this.request('/instagram/download/carousel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    }
+
+    static async getIgPostStats(url) {
+        return this.request(`/instagram/post/stats?url=${encodeURIComponent(url)}`);
+    }
+
+    static async getIgReelStats(url) {
+        return this.request(`/instagram/reel/stats?url=${encodeURIComponent(url)}`);
+    }
+
+    static async getIgProfilePosts(username, limit = 12) {
+        return this.request(`/instagram/profile/posts?username=${encodeURIComponent(username)}&limit=${limit}`);
+    }
+
+    static async startIgBatchDownload(payload) {
         return this.request('/instagram/download/batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items })
+            body: JSON.stringify(payload)
         });
     }
 
