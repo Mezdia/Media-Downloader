@@ -1854,7 +1854,7 @@ async def instagram_download_carousel(
         job_id,
         normalized_url,
         download_req.quality or "best",
-        download_req.include_metadata
+        download_req.include_metadata if download_req.include_metadata is not None else True
     )
     
     return {
@@ -1905,7 +1905,7 @@ async def instagram_download_batch(
         job_id,
         batch_req.items,
         batch_req.quality or "best",
-        batch_req.continue_on_error
+        batch_req.continue_on_error if batch_req.continue_on_error is not None else True
     )
     
     return {

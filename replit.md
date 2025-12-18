@@ -1,7 +1,7 @@
-# YouTube Downloader API
+# YouTube & Instagram Downloader API
 
 ## Overview
-A production-ready FastAPI backend for downloading YouTube videos, audio, subtitles, and thumbnails powered by yt-dlp. Features background job processing, rate limiting, and a bilingual (English/Persian) testing UI.
+A production-ready FastAPI backend for downloading YouTube videos and Instagram content (posts, reels, stories, carousels) powered by yt-dlp. Features background job processing, rate limiting, and a bilingual (English/Persian) testing UI.
 
 ## Project Structure
 ```
@@ -9,16 +9,18 @@ A production-ready FastAPI backend for downloading YouTube videos, audio, subtit
 ├── static/
 │   └── index.html          # Bilingual testing UI (EN/FA)
 ├── tmp/
-│   └── downloads/          # Temporary download storage (auto-cleaned)
+│   ├── downloads/          # YouTube download storage (auto-cleaned)
+│   └── instagram/          # Instagram download storage (auto-cleaned)
 ├── README_EN.md            # English documentation
 ├── README_FA.md            # Persian documentation
 ├── API_DOCS_EN.md          # English API reference
 ├── API_DOCS_FA.md          # Persian API reference
+├── INSTAGRAM_API_DOCS.md   # Instagram API documentation
 ├── pyproject.toml          # Python dependencies
 └── .gitignore              # Git ignore rules
 ```
 
-## API Endpoints
+## YouTube API Endpoints
 - `GET /info` - Get video/playlist metadata
 - `GET /formats` - List available download formats
 - `POST /download/single` - Download single video/audio
@@ -30,6 +32,24 @@ A production-ready FastAPI backend for downloading YouTube videos, audio, subtit
 - `GET /subtitles` - List available subtitles
 - `POST /subtitles` - Download subtitles
 - `GET /thumbnail` - Get video thumbnail
+
+## Instagram API Endpoints
+- `GET /instagram/info` - Get API capabilities
+- `GET /instagram/formats` - Get available formats
+- `GET /instagram/post/info` - Get post information
+- `GET /instagram/reel/info` - Get reel information
+- `GET /instagram/story/info` - Get story information
+- `GET /instagram/profile/info` - Get profile information
+- `GET /instagram/profile/posts` - Get profile posts
+- `POST /instagram/download/post` - Download post
+- `POST /instagram/download/reel` - Download reel
+- `POST /instagram/download/story` - Download stories
+- `POST /instagram/download/carousel` - Download carousel as ZIP
+- `POST /instagram/download/batch` - Batch download
+- `GET /instagram/status/{job_id}` - Check download status
+- `GET /instagram/download/file/{filename}` - Get downloaded file
+- `GET /instagram/post/stats` - Get post statistics
+- `GET /instagram/reel/stats` - Get reel statistics
 
 ## Running the Application
 The application runs on port 5000 with:

@@ -298,22 +298,44 @@
     
     <div class="container">
         <header>
-            <h1>🎬 <span data-en="YouTube Downloader API" data-fa="API دانلودر یوتیوب">YouTube Downloader API</span></h1>
+            <h1>🎬 <span data-en="YouTube & Instagram Downloader API" data-fa="API دانلودر یوتیوب و اینستاگرام">YouTube & Instagram Downloader API</span></h1>
             <p class="subtitle" data-en="Test all API endpoints interactively" data-fa="تست تعاملی تمام نقاط پایانی API">Test all API endpoints interactively</p>
         </header>
         
         <div class="warning">
             <strong data-en="⚠️ Legal Disclaimer:" data-fa="⚠️ اخطار حقوقی:">⚠️ Legal Disclaimer:</strong>
-            <span data-en="This tool is for personal, educational use only. Downloading copyrighted content may violate YouTube's Terms of Service and copyright laws. Use responsibly." data-fa="این ابزار فقط برای استفاده شخصی و آموزشی است. دانلود محتوای دارای حق نشر ممکن است قوانین یوتیوب و حق نشر را نقض کند. مسئولانه استفاده کنید.">This tool is for personal, educational use only. Downloading copyrighted content may violate YouTube's Terms of Service and copyright laws. Use responsibly.</span>
+            <span data-en="This tool is for personal, educational use only. Downloading copyrighted content may violate YouTube/Instagram Terms of Service and copyright laws. Use responsibly." data-fa="این ابزار فقط برای استفاده شخصی و آموزشی است. دانلود محتوای دارای حق نشر ممکن است قوانین یوتیوب/اینستاگرام و حق نشر را نقض کند. مسئولانه استفاده کنید.">This tool is for personal, educational use only. Downloading copyrighted content may violate YouTube/Instagram Terms of Service and copyright laws. Use responsibly.</span>
         </div>
         
-        <div class="tabs">
-            <button class="tab-btn active" onclick="showTab('info')" data-en="Video Info" data-fa="اطلاعات ویدیو">Video Info</button>
-            <button class="tab-btn" onclick="showTab('formats')" data-en="Formats" data-fa="فرمت‌ها">Formats</button>
-            <button class="tab-btn" onclick="showTab('download')" data-en="Download" data-fa="دانلود">Download</button>
-            <button class="tab-btn" onclick="showTab('playlist')" data-en="Playlist" data-fa="لیست پخش">Playlist</button>
-            <button class="tab-btn" onclick="showTab('subtitles')" data-en="Subtitles" data-fa="زیرنویس">Subtitles</button>
-            <button class="tab-btn" onclick="showTab('thumbnail')" data-en="Thumbnail" data-fa="تصویر بندانگشتی">Thumbnail</button>
+        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <button class="tab-btn active" onclick="switchPlatform('youtube')" id="platform-youtube" style="background: #ff0000;">
+                🎬 <span data-en="YouTube" data-fa="یوتیوب">YouTube</span>
+            </button>
+            <button class="tab-btn" onclick="switchPlatform('instagram')" id="platform-instagram" style="background: linear-gradient(45deg, #405de6, #5851db, #833ab4, #c13584, #e1306c, #fd1d1d);">
+                📸 <span data-en="Instagram" data-fa="اینستاگرام">Instagram</span>
+            </button>
+        </div>
+        
+        <div id="youtube-section">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('info')" data-en="Video Info" data-fa="اطلاعات ویدیو">Video Info</button>
+                <button class="tab-btn" onclick="showTab('formats')" data-en="Formats" data-fa="فرمت‌ها">Formats</button>
+                <button class="tab-btn" onclick="showTab('download')" data-en="Download" data-fa="دانلود">Download</button>
+                <button class="tab-btn" onclick="showTab('playlist')" data-en="Playlist" data-fa="لیست پخش">Playlist</button>
+                <button class="tab-btn" onclick="showTab('subtitles')" data-en="Subtitles" data-fa="زیرنویس">Subtitles</button>
+                <button class="tab-btn" onclick="showTab('thumbnail')" data-en="Thumbnail" data-fa="تصویر بندانگشتی">Thumbnail</button>
+            </div>
+        </div>
+        
+        <div id="instagram-section" style="display: none;">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('ig-post-info')" data-en="Post Info" data-fa="اطلاعات پست">Post Info</button>
+                <button class="tab-btn" onclick="showTab('ig-reel-info')" data-en="Reel Info" data-fa="اطلاعات ریلز">Reel Info</button>
+                <button class="tab-btn" onclick="showTab('ig-profile')" data-en="Profile" data-fa="پروفایل">Profile</button>
+                <button class="tab-btn" onclick="showTab('ig-download')" data-en="Download" data-fa="دانلود">Download</button>
+                <button class="tab-btn" onclick="showTab('ig-story')" data-en="Stories" data-fa="استوری">Stories</button>
+                <button class="tab-btn" onclick="showTab('ig-batch')" data-en="Batch" data-fa="دسته‌ای">Batch</button>
+            </div>
         </div>
         
         <div id="info" class="tab-content active">
@@ -455,14 +477,161 @@
             </div>
         </div>
         
+        <div id="ig-post-info" class="tab-content">
+            <div class="card">
+                <h3 data-en="Get Instagram Post Information" data-fa="دریافت اطلاعات پست اینستاگرام">Get Instagram Post Information</h3>
+                <div class="form-group">
+                    <label data-en="Instagram Post URL or Shortcode" data-fa="آدرس یا کد پست اینستاگرام">Instagram Post URL or Shortcode</label>
+                    <input type="text" id="ig-post-url" placeholder="https://www.instagram.com/p/ABC123/ or ABC123">
+                </div>
+                <button class="btn" onclick="getIgPostInfo()" style="background: linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045);" data-en="Get Post Info" data-fa="دریافت اطلاعات پست">Get Post Info</button>
+                <div class="loading" id="ig-post-info-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Loading..." data-fa="در حال بارگذاری...">Loading...</span>
+                </div>
+                <div class="result" id="ig-post-info-result"></div>
+            </div>
+        </div>
+        
+        <div id="ig-reel-info" class="tab-content">
+            <div class="card">
+                <h3 data-en="Get Instagram Reel Information" data-fa="دریافت اطلاعات ریلز اینستاگرام">Get Instagram Reel Information</h3>
+                <div class="form-group">
+                    <label data-en="Instagram Reel URL or Shortcode" data-fa="آدرس یا کد ریلز اینستاگرام">Instagram Reel URL or Shortcode</label>
+                    <input type="text" id="ig-reel-url" placeholder="https://www.instagram.com/reel/ABC123/ or ABC123">
+                </div>
+                <button class="btn" onclick="getIgReelInfo()" style="background: linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045);" data-en="Get Reel Info" data-fa="دریافت اطلاعات ریلز">Get Reel Info</button>
+                <div class="loading" id="ig-reel-info-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Loading..." data-fa="در حال بارگذاری...">Loading...</span>
+                </div>
+                <div class="result" id="ig-reel-info-result"></div>
+            </div>
+        </div>
+        
+        <div id="ig-profile" class="tab-content">
+            <div class="card">
+                <h3 data-en="Get Instagram Profile Information" data-fa="دریافت اطلاعات پروفایل اینستاگرام">Get Instagram Profile Information</h3>
+                <div class="form-group">
+                    <label data-en="Instagram Username" data-fa="نام کاربری اینستاگرام">Instagram Username</label>
+                    <input type="text" id="ig-username" placeholder="instagram or @instagram">
+                </div>
+                <button class="btn" onclick="getIgProfile()" style="background: linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045);" data-en="Get Profile Info" data-fa="دریافت اطلاعات پروفایل">Get Profile Info</button>
+                <div class="loading" id="ig-profile-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Loading..." data-fa="در حال بارگذاری...">Loading...</span>
+                </div>
+                <div class="result" id="ig-profile-result"></div>
+            </div>
+        </div>
+        
+        <div id="ig-download" class="tab-content">
+            <div class="card">
+                <h3 data-en="Download Instagram Content" data-fa="دانلود محتوای اینستاگرام">Download Instagram Content</h3>
+                <div class="form-group">
+                    <label data-en="Content Type" data-fa="نوع محتوا">Content Type</label>
+                    <select id="ig-content-type">
+                        <option value="post" data-en="Post (Image/Video/Carousel)" data-fa="پست (عکس/ویدیو/کاروسل)">Post (Image/Video/Carousel)</option>
+                        <option value="reel" data-en="Reel" data-fa="ریلز">Reel</option>
+                        <option value="carousel" data-en="Carousel as ZIP" data-fa="کاروسل به صورت ZIP">Carousel as ZIP</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-en="Instagram URL or Shortcode" data-fa="آدرس یا کد اینستاگرام">Instagram URL or Shortcode</label>
+                    <input type="text" id="ig-download-url" placeholder="https://www.instagram.com/p/ABC123/ or ABC123">
+                </div>
+                <div class="form-group">
+                    <label data-en="Quality" data-fa="کیفیت">Quality</label>
+                    <select id="ig-download-quality">
+                        <option value="best">Best</option>
+                        <option value="1080p">1080p</option>
+                        <option value="720p">720p</option>
+                        <option value="480p">480p</option>
+                    </select>
+                </div>
+                <div class="form-group" id="ig-audio-format-group" style="display: none;">
+                    <label data-en="Audio Format (for audio extraction)" data-fa="فرمت صدا (برای استخراج صدا)">Audio Format (for audio extraction)</label>
+                    <select id="ig-audio-format">
+                        <option value="best">Best</option>
+                        <option value="mp3">MP3</option>
+                        <option value="m4a">M4A</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="startIgDownload()" style="background: linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045);" data-en="Start Download" data-fa="شروع دانلود">Start Download</button>
+                <div class="loading" id="ig-download-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Downloading..." data-fa="در حال دانلود...">Downloading...</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="ig-download-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="result" id="ig-download-result"></div>
+            </div>
+        </div>
+        
+        <div id="ig-story" class="tab-content">
+            <div class="card">
+                <h3 data-en="Download Instagram Stories" data-fa="دانلود استوری‌های اینستاگرام">Download Instagram Stories</h3>
+                <div class="form-group">
+                    <label data-en="Instagram Username" data-fa="نام کاربری اینستاگرام">Instagram Username</label>
+                    <input type="text" id="ig-story-username" placeholder="instagram or @instagram">
+                </div>
+                <div class="form-group">
+                    <label data-en="Output Format" data-fa="فرمت خروجی">Output Format</label>
+                    <select id="ig-story-format">
+                        <option value="individual" data-en="Individual Files" data-fa="فایل‌های جداگانه">Individual Files</option>
+                        <option value="zip" data-en="ZIP Archive" data-fa="فایل ZIP">ZIP Archive</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="downloadIgStory()" style="background: linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045);" data-en="Download Stories" data-fa="دانلود استوری‌ها">Download Stories</button>
+                <div class="loading" id="ig-story-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Downloading..." data-fa="در حال دانلود...">Downloading...</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="ig-story-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="result" id="ig-story-result"></div>
+            </div>
+        </div>
+        
+        <div id="ig-batch" class="tab-content">
+            <div class="card">
+                <h3 data-en="Batch Download Instagram Content" data-fa="دانلود دسته‌ای محتوای اینستاگرام">Batch Download Instagram Content</h3>
+                <div class="form-group">
+                    <label data-en="URLs (one per line, format: URL|type where type is post/reel)" data-fa="آدرس‌ها (هر خط یک آدرس، فرمت: URL|type که type می‌تواند post یا reel باشد)">URLs (one per line, format: URL|type)</label>
+                    <textarea id="ig-batch-urls" rows="6" placeholder="https://www.instagram.com/p/ABC123/|post
+https://www.instagram.com/reel/DEF456/|reel"></textarea>
+                </div>
+                <div class="form-group">
+                    <label data-en="Quality" data-fa="کیفیت">Quality</label>
+                    <select id="ig-batch-quality">
+                        <option value="best">Best</option>
+                        <option value="1080p">1080p</option>
+                        <option value="720p">720p</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="startIgBatchDownload()" style="background: linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045);" data-en="Start Batch Download" data-fa="شروع دانلود دسته‌ای">Start Batch Download</button>
+                <div class="loading" id="ig-batch-loading">
+                    <div class="spinner"></div>
+                    <span data-en="Downloading..." data-fa="در حال دانلود...">Downloading...</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="ig-batch-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="result" id="ig-batch-result"></div>
+            </div>
+        </div>
+        
         <footer>
-            <p data-en="YouTube Downloader API v1.0 - Powered by yt-dlp" data-fa="API دانلودر یوتیوب نسخه 1.0 - با قدرت yt-dlp">YouTube Downloader API v1.0 - Powered by yt-dlp</p>
+            <p data-en="YouTube & Instagram Downloader API v2.0 - Powered by yt-dlp" data-fa="API دانلودر یوتیوب و اینستاگرام نسخه 2.0 - با قدرت yt-dlp">YouTube & Instagram Downloader API v2.0 - Powered by yt-dlp</p>
             <p><a href="/docs" style="color: var(--primary);" data-en="API Documentation (Swagger)" data-fa="مستندات API (Swagger)">API Documentation (Swagger)</a></p>
         </footer>
     </div>
     
     <script>
         let currentLang = 'en';
+        let currentPlatform = 'youtube';
         const API_BASE = '';
         
         function toggleLang() {
@@ -477,9 +646,29 @@
             });
         }
         
-        function showTab(tabId) {
+        function switchPlatform(platform) {
+            currentPlatform = platform;
+            document.getElementById('youtube-section').style.display = platform === 'youtube' ? 'block' : 'none';
+            document.getElementById('instagram-section').style.display = platform === 'instagram' ? 'block' : 'none';
+            document.getElementById('platform-youtube').classList.toggle('active', platform === 'youtube');
+            document.getElementById('platform-instagram').classList.toggle('active', platform === 'instagram');
+            
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            if (platform === 'youtube') {
+                document.getElementById('info').classList.add('active');
+                document.querySelector('#youtube-section .tab-btn').classList.add('active');
+            } else {
+                document.getElementById('ig-post-info').classList.add('active');
+                document.querySelector('#instagram-section .tab-btn').classList.add('active');
+            }
+        }
+        
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            const currentSection = currentPlatform === 'youtube' ? '#youtube-section' : '#instagram-section';
+            document.querySelectorAll(`${currentSection} .tab-btn`).forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             event.target.classList.add('active');
         }
@@ -632,6 +821,180 @@
                 showResult('thumbnail', { error: e.message }, true);
             }
             showLoading('thumbnail', false);
+        }
+        
+        async function getIgPostInfo() {
+            const url = document.getElementById('ig-post-url').value;
+            if (!url) return alert(currentLang === 'en' ? 'Please enter a URL or shortcode' : 'لطفا آدرس یا کد را وارد کنید');
+            
+            showLoading('ig-post-info', true);
+            try {
+                const data = await apiCall(`/instagram/post/info?url=${encodeURIComponent(url)}`);
+                let html = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                if (data.thumbnail) {
+                    html += `<div style="margin-top: 15px;"><img src="${data.thumbnail}" style="max-width: 100%; max-height: 300px; border-radius: 8px;" alt="Post thumbnail"></div>`;
+                }
+                document.getElementById('ig-post-info-result').innerHTML = html;
+                document.getElementById('ig-post-info-result').className = 'result success';
+            } catch (e) {
+                showResult('ig-post-info', { error: e.message }, true);
+            }
+            showLoading('ig-post-info', false);
+        }
+        
+        async function getIgReelInfo() {
+            const url = document.getElementById('ig-reel-url').value;
+            if (!url) return alert(currentLang === 'en' ? 'Please enter a URL or shortcode' : 'لطفا آدرس یا کد را وارد کنید');
+            
+            showLoading('ig-reel-info', true);
+            try {
+                const data = await apiCall(`/instagram/reel/info?url=${encodeURIComponent(url)}`);
+                let html = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                if (data.thumbnail) {
+                    html += `<div style="margin-top: 15px;"><img src="${data.thumbnail}" style="max-width: 100%; max-height: 300px; border-radius: 8px;" alt="Reel thumbnail"></div>`;
+                }
+                document.getElementById('ig-reel-info-result').innerHTML = html;
+                document.getElementById('ig-reel-info-result').className = 'result success';
+            } catch (e) {
+                showResult('ig-reel-info', { error: e.message }, true);
+            }
+            showLoading('ig-reel-info', false);
+        }
+        
+        async function getIgProfile() {
+            const username = document.getElementById('ig-username').value;
+            if (!username) return alert(currentLang === 'en' ? 'Please enter a username' : 'لطفا نام کاربری را وارد کنید');
+            
+            showLoading('ig-profile', true);
+            try {
+                const data = await apiCall(`/instagram/profile/info?username=${encodeURIComponent(username)}`);
+                showResult('ig-profile', data);
+            } catch (e) {
+                showResult('ig-profile', { error: e.message }, true);
+            }
+            showLoading('ig-profile', false);
+        }
+        
+        async function startIgDownload() {
+            const url = document.getElementById('ig-download-url').value;
+            const contentType = document.getElementById('ig-content-type').value;
+            const quality = document.getElementById('ig-download-quality').value;
+            
+            if (!url) return alert(currentLang === 'en' ? 'Please enter a URL' : 'لطفا آدرس را وارد کنید');
+            
+            showLoading('ig-download', true);
+            document.getElementById('ig-download-progress').style.width = '0%';
+            
+            try {
+                let endpoint = '/instagram/download/post';
+                let body = { url, quality };
+                
+                if (contentType === 'reel') {
+                    endpoint = '/instagram/download/reel';
+                } else if (contentType === 'carousel') {
+                    endpoint = '/instagram/download/carousel';
+                    body.include_metadata = true;
+                }
+                
+                const data = await apiCall(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                pollIgJobStatus(data.job_id, 'ig-download');
+            } catch (e) {
+                showResult('ig-download', { error: e.message }, true);
+                showLoading('ig-download', false);
+            }
+        }
+        
+        async function downloadIgStory() {
+            const username = document.getElementById('ig-story-username').value;
+            const format = document.getElementById('ig-story-format').value;
+            
+            if (!username) return alert(currentLang === 'en' ? 'Please enter a username' : 'لطفا نام کاربری را وارد کنید');
+            
+            showLoading('ig-story', true);
+            document.getElementById('ig-story-progress').style.width = '0%';
+            
+            try {
+                const data = await apiCall('/instagram/download/story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, format, quality: 'best' })
+                });
+                
+                pollIgJobStatus(data.job_id, 'ig-story');
+            } catch (e) {
+                showResult('ig-story', { error: e.message }, true);
+                showLoading('ig-story', false);
+            }
+        }
+        
+        async function startIgBatchDownload() {
+            const urlsText = document.getElementById('ig-batch-urls').value;
+            const quality = document.getElementById('ig-batch-quality').value;
+            
+            if (!urlsText.trim()) return alert(currentLang === 'en' ? 'Please enter URLs' : 'لطفا آدرس‌ها را وارد کنید');
+            
+            const items = urlsText.trim().split('\n').map(line => {
+                const parts = line.trim().split('|');
+                return {
+                    url: parts[0].trim(),
+                    type: parts[1] ? parts[1].trim() : 'post'
+                };
+            }).filter(item => item.url);
+            
+            if (items.length === 0) return alert(currentLang === 'en' ? 'No valid URLs found' : 'آدرس معتبری یافت نشد');
+            
+            showLoading('ig-batch', true);
+            document.getElementById('ig-batch-progress').style.width = '0%';
+            
+            try {
+                const data = await apiCall('/instagram/download/batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items, quality, continue_on_error: true })
+                });
+                
+                pollIgJobStatus(data.job_id, 'ig-batch');
+            } catch (e) {
+                showResult('ig-batch', { error: e.message }, true);
+                showLoading('ig-batch', false);
+            }
+        }
+        
+        async function pollIgJobStatus(jobId, resultId) {
+            try {
+                const data = await apiCall(`/instagram/status/${jobId}`);
+                const progressEl = document.getElementById(`${resultId}-progress`);
+                if (progressEl) {
+                    progressEl.style.width = `${data.progress}%`;
+                }
+                
+                if (data.status === 'completed') {
+                    showLoading(resultId, false);
+                    let html = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    if (data.files && data.files.length > 0) {
+                        html += '<div style="margin-top: 15px;">';
+                        data.files.forEach(file => {
+                            html += `<a href="${file.download_url}" class="download-link" download style="margin: 5px; display: inline-block;">${currentLang === 'en' ? 'Download' : 'دانلود'}: ${file.filename} (${file.size_mb || 'N/A'} MB)</a><br>`;
+                        });
+                        html += '</div>';
+                    }
+                    document.getElementById(`${resultId}-result`).innerHTML = html;
+                    document.getElementById(`${resultId}-result`).className = 'result success';
+                } else if (data.status === 'failed') {
+                    showLoading(resultId, false);
+                    showResult(resultId, data, true);
+                } else {
+                    setTimeout(() => pollIgJobStatus(jobId, resultId), 2000);
+                }
+            } catch (e) {
+                showLoading(resultId, false);
+                showResult(resultId, { error: e.message }, true);
+            }
         }
     </script>
 </body>

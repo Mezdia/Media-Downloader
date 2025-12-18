@@ -16,19 +16,19 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "YouTube Downloader API"
+args = "YouTube & Instagram API"
 
 [[workflows.workflow]]
-name = "YouTube Downloader API"
+name = "YouTube & Instagram API"
 author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python main.py"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [[ports]]
 localPort = 5000
