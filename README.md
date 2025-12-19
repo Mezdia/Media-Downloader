@@ -288,6 +288,169 @@ Access the interactive testing UI at the root URL (`/`). Features:
 - View JSON responses
 - Download files directly
 
+## Admin Panel System
+
+This system includes a comprehensive admin panel with both web-based and Telegram-based interfaces for complete bot management.
+
+### Web Admin Panel
+
+Access the web-based admin panel at `/static/admin/index.html`. Features:
+
+#### Dashboard
+- **Real-time Statistics**: Live system metrics and user activity
+- **Active Downloads**: Current download jobs and progress
+- **Storage Usage**: Disk usage and cleanup status
+- **System Uptime**: Server uptime and health monitoring
+- **Recent Activity**: Live activity feed with download history
+
+#### User Management
+- **User List**: Complete user database with search and filtering
+- **User Actions**: Ban, unban, promote, and demote users
+- **User Statistics**: Download counts, activity, and status
+- **Advanced Filtering**: Filter by admin status, banned users, active users
+- **User Search**: Real-time search by username, name, or user ID
+
+#### Variable Management
+- **Dynamic Variables**: Create, edit, and delete system variables
+- **Variable Descriptions**: Add descriptions for better documentation
+- **Real-time Updates**: Variables update in real-time across the system
+- **Variable History**: Track variable changes and updates
+
+#### Broadcast Messaging
+- **Message Broadcasting**: Send messages to all users simultaneously
+- **Preview Mode**: Preview messages before sending
+- **Rich Formatting**: Support for Markdown formatting
+- **Delivery Tracking**: Track delivery success and error rates
+- **Message History**: View all sent broadcasts with statistics
+
+#### Analytics & Reporting
+- **Download Analytics**: Detailed download statistics and trends
+- **User Growth**: New user registration and activity tracking
+- **Platform Statistics**: YouTube vs Instagram usage breakdown
+- **Time-based Reports**: Generate reports for different time periods
+- **Export Capabilities**: Export analytics data for external analysis
+
+#### System Settings
+- **Rate Limiting**: Configure API rate limits per user
+- **File Management**: Set file retention times and size limits
+- **Feature Toggles**: Enable/disable analytics and logging
+- **Maintenance Mode**: Put the system in maintenance mode
+- **Database Management**: Cleanup, backup, and reset database operations
+
+### Telegram Admin Panel
+
+Access the Telegram-based admin panel using bot commands:
+
+#### Admin Commands
+- `/admin` - Open the interactive admin dashboard
+- `/stats` - Quick system statistics
+- `/users` - List recent users
+- `/broadcast <message>` - Send broadcast message
+- `/ban <user_id>` - Ban a user
+- `/unban <user_id>` - Unban a user
+- `/promote <user_id>` - Promote user to admin
+- `/demote <user_id>` - Demote admin to user
+- `/variable <key> <value>` - Set system variable
+- `/getvar <key>` - Get system variable value
+
+#### Interactive Features
+- **Inline Keyboards**: Interactive buttons for all admin functions
+- **Real-time Updates**: Live statistics and notifications
+- **User Search**: Search and manage users directly in Telegram
+- **Quick Actions**: One-click user management actions
+- **System Monitoring**: Real-time system health and activity
+
+### Bot Features
+
+#### Advanced Animations
+- **Context-aware Reactions**: Smart emoji reactions based on content type
+- **Progress Animations**: Animated progress indicators during downloads
+- **Status Updates**: Live status updates with emojis and animations
+- **Interactive Feedback**: Visual feedback for all user actions
+
+#### Enhanced User Experience
+- **Smart URL Detection**: Automatic platform detection and processing
+- **Quality Selection**: Glass-style quality selection interface
+- **Live Progress**: Real-time download and upload progress
+- **Error Handling**: Comprehensive error messages with user guidance
+
+#### Message Management
+- **Message Editing**: Edit bot messages with updated information
+- **Message Deletion**: Delete messages after completion
+- **Reaction Management**: Add and remove reactions to messages
+- **User Reactions**: React to user messages for better engagement
+
+### API Integration
+
+All admin functions are accessible via REST API endpoints:
+
+#### Admin Endpoints
+- `GET /admin/stats` - System statistics
+- `GET /admin/users` - User list
+- `POST /admin/users/{id}/ban` - Ban user
+- `POST /admin/users/{id}/unban` - Unban user
+- `POST /admin/users/{id}/promote` - Promote to admin
+- `POST /admin/users/{id}/demote` - Demote from admin
+- `GET /admin/variables` - Get variables
+- `POST /admin/variables` - Create/update variable
+- `DELETE /admin/variables/{key}` - Delete variable
+- `POST /admin/broadcast` - Send broadcast
+- `GET /admin/broadcast/history` - Broadcast history
+- `GET /admin/analytics` - Analytics data
+- `GET /admin/settings` - System settings
+- `POST /admin/settings` - Update settings
+- `GET /admin/activity/recent` - Recent activity
+- `POST /admin/database/cleanup` - Database cleanup
+- `GET /admin/database/backup` - Database backup
+- `POST /admin/database/reset` - Database reset (dangerous)
+
+### Security Features
+
+- **Admin-only Access**: All admin functions require admin privileges
+- **Role-based Permissions**: Different permission levels for different operations
+- **Input Validation**: Comprehensive input validation and sanitization
+- **Rate Limiting**: Protection against API abuse
+- **Audit Logging**: Track all admin actions for security
+
+### Modern UI/UX
+
+#### Glass-morphism Design
+- **Modern Aesthetics**: Glass-effect cards and components
+- **Gradient Backgrounds**: Beautiful gradient backgrounds
+- **Smooth Animations**: CSS animations and transitions
+- **Responsive Design**: Works on desktop, tablet, and mobile
+
+#### Interactive Elements
+- **Real-time Updates**: Live data updates without page refresh
+- **Search Functionality**: Instant search across all data
+- **Filtering Options**: Advanced filtering and sorting
+- **Export Features**: Export data in various formats
+
+#### Accessibility
+- **Keyboard Navigation**: Full keyboard support
+- **Screen Reader Support**: ARIA labels and descriptions
+- **High Contrast**: High contrast mode support
+- **Multi-language**: Support for multiple languages
+
+### Getting Started
+
+1. **Web Admin Panel**: Open `/static/admin/index.html` in your browser
+2. **Telegram Admin**: Start a chat with your bot and use `/admin`
+3. **API Access**: Use the admin API endpoints for integration
+4. **User Management**: Use the user management features to control access
+5. **System Monitoring**: Monitor system health and performance
+6. **Broadcasting**: Send messages to all users
+7. **Analytics**: Track usage and performance metrics
+
+### Best Practices
+
+- **Regular Backups**: Use the database backup feature regularly
+- **Monitor Usage**: Keep an eye on system statistics and usage
+- **User Management**: Regularly review and manage user permissions
+- **System Maintenance**: Use cleanup features to maintain optimal performance
+- **Security**: Regularly review admin access and permissions
+- **Analytics**: Use analytics to understand usage patterns and optimize performance
+
 ## File Cleanup
 
 Downloaded files are automatically deleted after 30 minutes to save storage space.

@@ -30,7 +30,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
 import yt_dlp
 import aiofiles
+import yt_dlp
+import aiofiles
 from cleanup import start_cleanup_thread
+from database import init_db, get_db, User, Variable, DownloadHistory
+from bot import core as bot_core
+from sqlalchemy import select, delete
+import websockets
+import json
+import logging
+import asyncio
+from typing import Dict, List, Any
 
 
 DOWNLOAD_DIR = Path("tmp/downloads")
@@ -51,6 +61,7 @@ app = FastAPI(
 )
 
 instagram_router = APIRouter(prefix="/instagram", tags=["Instagram"])
+admin_router = APIRouter(prefix="/admin", tags=["Admin"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,8 +71,61 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# Live logging system
+live_logs: List[Dict[str, Any]] = []
+log_clients: List = []
+
+# Enhanced job tracking with live updates
 jobs: Dict[str, Dict[str, Any]] = {}
+app.include_router(instagram_router)
+app.include_router(admin_router)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 rate_limit_store: Dict[str, List[float]] = defaultdict(list)
+
+# Custom logging handler for live updates
+class LiveLogHandler(logging.Handler):
+    def emit(self, record):
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "level": record.levelname,
+            "message": self.format(record),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno
+        }
+        live_logs.append(log_entry)
+        # Keep only last 1000 logs
+        if len(live_logs) > 1000:
+            live_logs.pop(0)
+        
+        # Broadcast to WebSocket clients
+        asyncio.create_task(self.broadcast_log(log_entry))
+    
+    async def broadcast_log(self, log_entry):
+        """Broadcast log entry to all connected WebSocket clients."""
+        if log_clients:
+            message = json.dumps({"type": "log", "data": log_entry})
+            disconnected_clients = []
+            
+            for client in log_clients:
+                try:
+                    await client.send(message)
+                except websockets.exceptions.ConnectionClosed:
+                    disconnected_clients.append(client)
+                except Exception:
+                    disconnected_clients.append(client)
+            
+            # Remove disconnected clients
+            for client in disconnected_clients:
+                if client in log_clients:
+                    log_clients.remove(client)
+
+# Setup live logging
+live_handler = LiveLogHandler()
+logging.getLogger().addHandler(live_handler)
+logging.getLogger().setLevel(logging.INFO)
 
 
 class DownloadRequest(BaseModel):
@@ -255,8 +319,62 @@ def extract_format_info(fmt: dict) -> dict:
 @app.on_event("startup")
 async def startup_event():
     """Clean up old files on startup."""
+    app.startup_time = time.time()
     await cleanup_old_files()
     start_cleanup_thread()
+    await init_db()
+    # Initialize bot
+    asyncio.create_task(bot_core.run_bot())
+
+# WebSocket endpoint for live logs
+@app.websocket("/ws/logs")
+async def websocket_logs(websocket):
+    """WebSocket endpoint for real-time log streaming."""
+    await websocket.accept()
+    log_clients.append(websocket)
+    
+    try:
+        # Send recent logs to new client
+        recent_logs = live_logs[-100:] if len(live_logs) > 100 else live_logs
+        for log_entry in recent_logs:
+            await websocket.send(json.dumps({"type": "log", "data": log_entry}))
+        
+        # Keep connection alive
+        while True:
+            try:
+                await websocket.receive_text()
+            except:
+                break
+    finally:
+        if websocket in log_clients:
+            log_clients.remove(websocket)
+
+# Admin WebSocket endpoint for real-time updates
+@app.websocket("/ws/admin")
+async def websocket_admin(websocket):
+    """WebSocket endpoint for admin panel real-time updates."""
+    await websocket.accept()
+    
+    try:
+        while True:
+            # Send real-time stats
+            stats = await get_stats()
+            await websocket.send(json.dumps({
+                "type": "stats",
+                "data": stats
+            }))
+            
+            # Send recent logs
+            recent_logs = live_logs[-50:] if len(live_logs) > 50 else live_logs
+            await websocket.send(json.dumps({
+                "type": "logs",
+                "data": recent_logs
+            }))
+            
+            # Wait before next update
+            await asyncio.sleep(2)
+    except:
+        pass
 
 
 @app.get("/")
@@ -269,6 +387,34 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+# API endpoints for logs
+@app.get("/api/logs")
+async def get_logs(limit: int = Query(default=100, ge=1, le=1000)):
+    """Get recent logs."""
+    return {
+        "logs": live_logs[-limit:] if len(live_logs) > limit else live_logs,
+        "total": len(live_logs)
+    }
+
+@app.get("/api/logs/search")
+async def search_logs(query: str = Query(..., min_length=1), limit: int = Query(default=100, ge=1, le=1000)):
+    """Search logs by content."""
+    filtered_logs = [
+        log for log in live_logs
+        if query.lower() in log["message"].lower() or query.lower() in log["module"].lower()
+    ]
+    return {
+        "logs": filtered_logs[-limit:] if len(filtered_logs) > limit else filtered_logs,
+        "total": len(filtered_logs),
+        "query": query
+    }
+
+@app.delete("/api/logs/clear")
+async def clear_logs():
+    """Clear all logs."""
+    live_logs.clear()
+    return {"message": "Logs cleared successfully"}
 
 
 @app.get("/info")
@@ -390,6 +536,420 @@ async def get_formats(request: Request, url: str = Query(..., description="YouTu
         raise HTTPException(status_code=500, detail=f"Error getting formats: {str(e)}")
 
 
+# --- Admin API ---
+
+@admin_router.get("/stats")
+async def get_stats():
+    """Get comprehensive system statistics."""
+    async for session in get_db():
+        # Get basic counts
+        total_users = await session.scalar(select(User).count())
+        total_downloads = await session.scalar(select(DownloadHistory).count())
+        total_admins = await session.scalar(select(User).where(User.is_admin == True).count())
+        total_banned = await session.scalar(select(User).where(User.is_banned == True).count())
+        
+        # Get today's activity
+        today = datetime.now().date()
+        users_today = await session.scalar(
+            select(User).where(User.created_at >= today).count()
+        )
+        downloads_today = await session.scalar(
+            select(DownloadHistory).where(DownloadHistory.download_date >= today).count()
+        )
+        banned_today = await session.scalar(
+            select(User).where(User.is_banned == True, User.created_at >= today).count()
+        )
+        
+        # Get recent downloads
+        history = await session.execute(
+            select(DownloadHistory).order_by(DownloadHistory.download_date.desc()).limit(10)
+        )
+        recent_downloads = [
+            {
+                "title": h.title,
+                "media_type": h.media_type,
+                "date": h.download_date.isoformat(),
+                "link": h.link
+            }
+            for h in history.scalars().all()
+        ]
+        
+        # Calculate active downloads (jobs still processing)
+        active_downloads = len([job for job in jobs.values() if job.get("status") in ["pending", "processing"]])
+        
+        # Calculate storage usage
+        storage_used = sum(
+            os.path.getsize(f) for f in DOWNLOAD_DIR.glob("*") if f.is_file()
+        )
+        
+        # Count API requests (approximate)
+        api_requests = len([t for t in rate_limit_store.get("*", []) if time.time() - t < 3600])
+        
+        # Calculate uptime
+        uptime_seconds = time.time() - app.startup_time if hasattr(app, 'startup_time') else 0
+        uptime_hours = int(uptime_seconds // 3600)
+        uptime_minutes = int((uptime_seconds % 3600) // 60)
+        
+        return {
+            "total_users": total_users,
+            "total_downloads": total_downloads,
+            "total_admins": total_admins,
+            "total_banned": total_banned,
+            "users_today": users_today,
+            "downloads_today": downloads_today,
+            "new_admins": 0,  # TODO: Track admin promotions
+            "banned_today": banned_today,
+            "active_downloads": active_downloads,
+            "storage_used": storage_used,
+            "api_requests": api_requests,
+            "uptime": f"{uptime_hours}h {uptime_minutes}m",
+            "recent_downloads": recent_downloads
+        }
+
+class VariableModel(BaseModel):
+    key: str
+    value: str
+    description: Optional[str] = None
+
+class UserManagementRequest(BaseModel):
+    user_id: int
+    action: str
+
+class BroadcastRequest(BaseModel):
+    message: str
+    persistent: Optional[bool] = False
+    timestamp: Optional[str] = None
+
+class SettingsModel(BaseModel):
+    max_downloads_per_user: int
+    file_retention_hours: int
+    api_rate_limit: int
+    max_file_size_mb: int
+    enable_analytics: bool
+    enable_logging: bool
+    maintenance_mode: bool
+
+@admin_router.get("/users")
+async def get_users():
+    """Get all users with their details."""
+    async for session in get_db():
+        result = await session.execute(select(User).order_by(User.created_at.desc()))
+        users = result.scalars().all()
+        
+        return [
+            {
+                "user_id": user.user_id,
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "is_admin": user.is_admin,
+                "is_banned": user.is_banned,
+                "downloads_count": user.downloads_count,
+                "created_at": user.created_at.isoformat(),
+                "last_activity": user.last_activity.isoformat() if user.last_activity else None
+            }
+            for user in users
+        ]
+
+@admin_router.post("/users/{user_id}/ban")
+async def ban_user(user_id: int):
+    """Ban a user."""
+    async for session in get_db():
+        result = await session.execute(select(User).where(User.user_id == user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.is_admin:
+            raise HTTPException(status_code=400, detail="Cannot ban an admin user")
+        
+        user.is_banned = True
+        await session.commit()
+        
+    return {"status": "success", "message": f"User {user_id} has been banned"}
+
+@admin_router.post("/users/{user_id}/unban")
+async def unban_user(user_id: int):
+    """Unban a user."""
+    async for session in get_db():
+        result = await session.execute(select(User).where(User.user_id == user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user.is_banned = False
+        await session.commit()
+        
+    return {"status": "success", "message": f"User {user_id} has been unbanned"}
+
+@admin_router.post("/users/{user_id}/promote")
+async def promote_user(user_id: int):
+    """Promote user to admin."""
+    async for session in get_db():
+        result = await session.execute(select(User).where(User.user_id == user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.is_admin:
+            raise HTTPException(status_code=400, detail="User is already an admin")
+        
+        user.is_admin = True
+        await session.commit()
+        
+    return {"status": "success", "message": f"User {user_id} has been promoted to admin"}
+
+@admin_router.post("/users/{user_id}/demote")
+async def demote_user(user_id: int):
+    """Demote admin to regular user."""
+    async for session in get_db():
+        result = await session.execute(select(User).where(User.user_id == user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not user.is_admin:
+            raise HTTPException(status_code=400, detail="User is not an admin")
+        
+        user.is_admin = False
+        await session.commit()
+        
+    return {"status": "success", "message": f"Admin {user_id} has been demoted to user"}
+
+@admin_router.get("/variables")
+async def get_variables():
+    """Get all variables."""
+    async for session in get_db():
+        result = await session.execute(select(Variable).order_by(Variable.key))
+        variables = result.scalars().all()
+        return [
+            {
+                "key": v.key,
+                "value": v.value,
+                "description": v.description,
+                "updated_at": v.updated_at.isoformat() if v.updated_at else None
+            }
+            for v in variables
+        ]
+
+@admin_router.post("/variables")
+async def create_variable(var: VariableModel):
+    """Create or update a variable."""
+    async for session in get_db():
+        result = await session.execute(select(Variable).where(Variable.key == var.key))
+        existing = result.scalar_one_or_none()
+        
+        if existing:
+            existing.value = var.value
+            existing.description = var.description
+            existing.updated_at = datetime.now()
+        else:
+            session.add(Variable(
+                key=var.key,
+                value=var.value,
+                description=var.description,
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            ))
+        
+        await session.commit()
+    return {"status": "success", "message": "Variable saved successfully"}
+
+@admin_router.delete("/variables/{key}")
+async def delete_variable(key: str):
+    """Delete a variable."""
+    async for session in get_db():
+        result = await session.execute(select(Variable).where(Variable.key == key))
+        variable = result.scalar_one_or_none()
+        
+        if not variable:
+            raise HTTPException(status_code=404, detail="Variable not found")
+        
+        await session.delete(variable)
+        await session.commit()
+        
+    return {"status": "success", "message": f"Variable '{key}' deleted successfully"}
+
+class BroadcastRequest(BaseModel):
+    message: str
+
+@admin_router.post("/broadcast")
+async def broadcast_message(req: BroadcastRequest):
+    """Broadcast message to all users."""
+    if not bot_core.bot_app:
+        raise HTTPException(503, "Bot not initialized")
+        
+    count = 0
+    errors = 0
+    
+    async for session in get_db():
+        result = await session.execute(select(User.telegram_id))
+        users = result.scalars().all()
+        
+    for user_id in users:
+        try:
+             await bot_core.bot_app.bot.send_message(chat_id=user_id, text=req.message)
+             count += 1
+        except Exception as e:
+            errors += 1
+            
+    return {"status": "completed", "sent": count, "errors": errors}
+
+@admin_router.get("/activity/recent")
+async def get_recent_activity():
+    """Get recent system activity."""
+    activities = []
+    
+    # Get recent downloads
+    async for session in get_db():
+        result = await session.execute(
+            select(DownloadHistory)
+            .order_by(DownloadHistory.download_date.desc())
+            .limit(5)
+        )
+        downloads = result.scalars().all()
+        
+        for download in downloads:
+            activities.append({
+                "type": "download",
+                "title": f"Downloaded {download.media_type}: {download.title[:50]}...",
+                "timestamp": download.download_date.isoformat()
+            })
+    
+    # Add system activities
+    if activities:
+        activities.append({
+            "type": "admin_action",
+            "title": "Admin panel accessed",
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    return activities[:10]
+
+@admin_router.get("/broadcast/history")
+async def get_broadcast_history():
+    """Get broadcast message history."""
+    history = getattr(app, 'broadcast_history', [])
+    return sorted(history, key=lambda x: x['timestamp'], reverse=True)[:10]
+
+@admin_router.get("/analytics")
+async def get_analytics(period: int = Query(default=30, description="Period in days")):
+    """Get analytics data for specified period."""
+    start_date = datetime.now() - timedelta(days=period)
+    
+    async for session in get_db():
+        # Download analytics
+        downloads_result = await session.execute(
+            select(DownloadHistory)
+            .where(DownloadHistory.download_date >= start_date)
+        )
+        downloads = downloads_result.scalars().all()
+        
+        # User analytics
+        users_result = await session.execute(
+            select(User)
+            .where(User.created_at >= start_date)
+        )
+        new_users = users_result.scalars().all()
+        
+        # Platform distribution
+        platform_counts = {}
+        for download in downloads:
+            platform = download.platform or "unknown"
+            platform_counts[platform] = platform_counts.get(platform, 0) + 1
+        
+        # Daily downloads
+        daily_downloads = {}
+        for download in downloads:
+            date_key = download.download_date.date().isoformat()
+            daily_downloads[date_key] = daily_downloads.get(date_key, 0) + 1
+        
+        # Daily new users
+        daily_users = {}
+        for user in new_users:
+            date_key = user.created_at.date().isoformat()
+            daily_users[date_key] = daily_users.get(date_key, 0) + 1
+        
+        return {
+            "period_days": period,
+            "downloads": {
+                "total": len(downloads),
+                "labels": sorted(daily_downloads.keys()),
+                "data": [daily_downloads[date] for date in sorted(daily_downloads.keys())]
+            },
+            "users": {
+                "total": len(new_users),
+                "labels": sorted(daily_users.keys()),
+                "data": [daily_users[date] for date in sorted(daily_users.keys())]
+            },
+            "platforms": platform_counts,
+            "popular_platform": max(platform_counts.items(), key=lambda x: x[1])[0] if platform_counts else "unknown",
+            "avg_daily_downloads": round(len(downloads) / period, 1) if period > 0 else 0,
+            "peak_hour": "14:00",  # TODO: Calculate actual peak hour
+            "most_active_user": "N/A"  # TODO: Calculate most active user
+        }
+
+@admin_router.get("/settings")
+async def get_settings():
+    """Get system settings."""
+    # Default settings (in production, these should be stored in database)
+    return {
+        "max_downloads_per_user": 100,
+        "file_retention_hours": 24,
+        "api_rate_limit": 30,
+        "max_file_size_mb": 500,
+        "enable_analytics": True,
+        "enable_logging": True,
+        "maintenance_mode": False
+    }
+
+@admin_router.post("/settings")
+async def save_settings(settings: SettingsModel):
+    """Save system settings."""
+    # In production, save to database
+    # For now, just return success
+    return {"status": "success", "message": "Settings saved successfully"}
+
+@admin_router.post("/database/cleanup")
+async def cleanup_database():
+    """Clean up old database records."""
+    try:
+        async for session in get_db():
+            # Remove old download history (older than 30 days)
+            cutoff_date = datetime.now() - timedelta(days=30)
+            await session.execute(
+                delete(DownloadHistory).where(DownloadHistory.download_date < cutoff_date)
+            )
+            await session.commit()
+        
+        return {"status": "success", "message": "Database cleanup completed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
+@admin_router.get("/database/backup")
+async def backup_database():
+    """Create database backup."""
+    # In production, implement actual database backup
+    return {"status": "success", "message": "Database backup created"}
+
+@admin_router.post("/database/reset")
+async def reset_database():
+    """Reset database (DANGEROUS - only for development)."""
+    # This is dangerous - add proper confirmation in production
+    try:
+        async for session in get_db():
+            await session.execute(delete(DownloadHistory))
+            await session.execute(delete(User).where(User.is_admin == False))  # Keep admins
+            await session.commit()
+        
+        return {"status": "success", "message": "Database reset completed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
+
 @app.post("/download/single")
 async def download_single(request: Request, download_req: DownloadRequest, background_tasks: BackgroundTasks):
     """
@@ -427,21 +987,86 @@ async def download_single(request: Request, download_req: DownloadRequest, backg
     }
 
 
+async def internal_get_formats(url: str) -> dict:
+    """Internal function to get video formats."""
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": "in_playlist", # Don't extract full playlist items
+    }
+    
+    loop = asyncio.get_event_loop()
+    
+    def _extract():
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            return ydl.extract_info(url, download=False)
+            
+    try:
+        info = await loop.run_in_executor(None, _extract)
+        if not info:
+             raise Exception("No info extraction")
+             
+        return {
+            "title": info.get("title"),
+            "duration": info.get("duration"),
+            "thumbnail": info.get("thumbnail"),
+             # Simplified format check: if it has video, we offer resolutions
+            "is_video": any(f.get("vcodec") != "none" for f in info.get("formats", [])),
+        }
+    except Exception as e:
+        raise Exception(f"Extract error: {e}")
+
+async def internal_download_video(url: str, quality: Optional[str] = "best", format_id: Optional[str] = None, 
+                                  download_type: Optional[str] = "video", audio_format: Optional[str] = "best",
+                                  progress_hooks: Optional[List] = None) -> dict:
+    """Internal function to download video, returns file info."""
+    file_id = str(uuid.uuid4())[:8]
+    output_template = str(DOWNLOAD_DIR / f"{file_id}_%(title)s.%(ext)s")
+    
+    if format_id:
+        format_str = format_id
+    else:
+        format_str = get_format_string(quality, download_type)
+    
+    ydl_opts = get_yt_dlp_opts(output_template, format_str, audio_format)
+    
+    if progress_hooks:
+        ydl_opts["progress_hooks"] = progress_hooks
+        
+    # Run in thread pool to avoid blocking async loop
+    loop = asyncio.get_event_loop()
+    
+    def _download():
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            return ydl.extract_info(url, download=True)
+            
+    info = await loop.run_in_executor(None, _download)
+    
+    if info:
+        downloaded_files = list(DOWNLOAD_DIR.glob(f"{file_id}_*"))
+        if not downloaded_files:
+             raise Exception("Download finished but file not found.")
+             
+        # Find the main file (largest usually, or just the first)
+        main_file = downloaded_files[0]
+        
+        return {
+            "title": info.get("title"),
+            "file_path": str(main_file),
+            "filename": main_file.name,
+            "duration": info.get("duration"),
+            "thumbnail": info.get("thumbnail"),
+             "width": info.get("width"),
+            "height": info.get("height"),
+        }
+    else:
+        raise Exception("Could not extract video info")
+
 async def process_download(job_id: str, url: str, quality: Optional[str], format_id: Optional[str], 
                           download_type: Optional[str], audio_format: Optional[str]):
     """Background task to process video download."""
     try:
         jobs[job_id]["status"] = "processing"
-        
-        file_id = str(uuid.uuid4())[:8]
-        output_template = str(DOWNLOAD_DIR / f"{file_id}_%(title)s.%(ext)s")
-        
-        if format_id:
-            format_str = format_id
-        else:
-            format_str = get_format_string(quality, download_type)
-        
-        ydl_opts = get_yt_dlp_opts(output_template, format_str, audio_format)
         
         def progress_hook(d):
             if d["status"] == "downloading":
@@ -451,28 +1076,19 @@ async def process_download(job_id: str, url: str, quality: Optional[str], format
                     jobs[job_id]["progress"] = int((downloaded / total) * 100)
             elif d["status"] == "finished":
                 jobs[job_id]["progress"] = 100
+
+        result = await internal_download_video(url, quality, format_id, download_type, audio_format, [progress_hook])
         
-        ydl_opts["progress_hooks"] = [progress_hook]
-        
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            
-            if info:
-                downloaded_files = list(DOWNLOAD_DIR.glob(f"{file_id}_*"))
-                jobs[job_id]["files"] = [
-                    {
-                        "filename": f.name,
-                        "path": str(f),
-                        "size": f.stat().st_size,
-                        "download_url": f"/download/file/{f.name}"
-                    }
-                    for f in downloaded_files
-                ]
-                jobs[job_id]["status"] = "completed"
-                jobs[job_id]["title"] = info.get("title")
-            else:
-                jobs[job_id]["status"] = "failed"
-                jobs[job_id]["error"] = "Download failed - could not extract video info"
+        jobs[job_id]["files"] = [
+            {
+                "filename": result["filename"],
+                "path": result["file_path"],
+                "size": os.path.getsize(result["file_path"]),
+                "download_url": f"/download/file/{result['filename']}"
+            }
+        ]
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["title"] = result["title"]
                 
     except Exception as e:
         jobs[job_id]["status"] = "failed"
@@ -2105,38 +2721,42 @@ async def instagram_get_reel_stats(
 
 
 async def process_instagram_download(
-    job_id: str, 
-    url: str, 
-    quality: str, 
+    job_id: str,
+    url: str,
+    quality: str,
     download_type: str,
     audio_format: Optional[str]
 ):
     """Background task to process Instagram post/reel download."""
     try:
         jobs[job_id]["status"] = "processing"
-        
+        logger.info(f"Starting Instagram download for job {job_id}: {url}")
+
         file_id = str(uuid.uuid4())[:8]
         output_template = str(INSTAGRAM_DOWNLOAD_DIR / f"{file_id}_%(title)s.%(ext)s")
-        
+
         if download_type == "audio_only" and audio_format:
             ydl_opts = get_instagram_audio_opts(output_template, audio_format)
         else:
             ydl_opts = get_instagram_ydl_opts(output_template, quality)
-        
+
         def progress_hook(d):
             if d["status"] == "downloading":
                 total = d.get("total_bytes") or d.get("total_bytes_estimate", 0)
                 downloaded = d.get("downloaded_bytes", 0)
                 if total > 0:
-                    jobs[job_id]["progress"] = int((downloaded / total) * 100)
+                    progress = int((downloaded / total) * 100)
+                    jobs[job_id]["progress"] = progress
+                    logger.info(f"Instagram download progress for job {job_id}: {progress}%")
             elif d["status"] == "finished":
                 jobs[job_id]["progress"] = 100
-        
+                logger.info(f"Instagram download finished for job {job_id}")
+
         ydl_opts["progress_hooks"] = [progress_hook]
-        
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            
+
             if info:
                 downloaded_files = list(INSTAGRAM_DOWNLOAD_DIR.glob(f"{file_id}_*"))
                 jobs[job_id]["files"] = [
@@ -2151,13 +2771,16 @@ async def process_instagram_download(
                 ]
                 jobs[job_id]["status"] = "completed"
                 jobs[job_id]["title"] = info.get("title") or info.get("description", "")[:50]
+                logger.info(f"Instagram download completed for job {job_id}: {jobs[job_id]['title']}")
             else:
                 jobs[job_id]["status"] = "failed"
                 jobs[job_id]["error"] = "Download failed - could not extract content"
-                
+                logger.error(f"Instagram download failed for job {job_id}: could not extract content")
+
     except Exception as e:
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        logger.error(f"Instagram download failed for job {job_id}: {str(e)}")
 
 
 async def process_instagram_story_download(

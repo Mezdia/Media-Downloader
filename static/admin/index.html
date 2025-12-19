@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Downloader - Advanced Admin Panel</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container" id="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <h2>Admin<span>Panel</span></h2>
+                <div class="version">v2.0</div>
+            </div>
+            <nav>
+                <button class="nav-item active" data-tab="dashboard" onclick="showTab('dashboard')">
+                    <span class="icon">📊</span> <span data-i18n="dashboard">Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="users" onclick="showTab('users')">
+                    <span class="icon">👥</span> <span data-i18n="users">Users</span>
+                </button>
+                <button class="nav-item" data-tab="variables" onclick="showTab('variables')">
+                    <span class="icon">⚙️</span> <span data-i18n="variables">Variables</span>
+                </button>
+                <button class="nav-item" data-tab="logs" onclick="showTab('logs')">
+                    <span class="icon">📜</span> <span data-i18n="logs">Live Logs</span>
+                </button>
+                <button class="nav-item" data-tab="broadcast" onclick="showTab('broadcast')">
+                    <span class="icon">📢</span> <span data-i18n="broadcast">Broadcast</span>
+                </button>
+                <button class="nav-item" data-tab="analytics" onclick="showTab('analytics')">
+                    <span class="icon">📈</span> <span data-i18n="analytics">Analytics</span>
+                </button>
+                <button class="nav-item" data-tab="settings" onclick="showTab('settings')">
+                    <span class="icon">🔧</span> <span data-i18n="settings">Settings</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="system-status">
+                    <div class="status-indicator online"></div>
+                    <span>System Online</span>
+                </div>
+                <div class="lang-switch">
+                    <button onclick="setLang('en')">EN</button>
+                    <button onclick="setLang('fa')">FA</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="section-header">
+                    <h1>📊 Dashboard Overview</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" onclick="refreshDashboard()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <button class="btn btn-primary" onclick="exportDashboard()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card glass-effect">
+                        <div class="stat-icon bg-gradient-blue">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-number" id="total-users">0</div>
+                            <div class="stat-label">Total Users</div>
+                            <div class="stat-change positive" id="users-change">+0 today</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card glass-effect">
+                        <div class="stat-icon bg-gradient-green">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-number" id="total-downloads">0</div>
+                            <div class="stat-label">Total Downloads</div>
+                            <div class="stat-change positive" id="downloads-change">+0 today</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card glass-effect">
+                        <div class="stat-icon bg-gradient-purple">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-number" id="total-admins">0</div>
+                            <div class="stat-label">Admins</div>
+                            <div class="stat-change neutral" id="admins-change">+0 new</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card glass-effect">
+                        <div class="stat-icon bg-gradient-red">
+                            <i class="fas fa-user-slash"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-number" id="total-banned">0</div>
+                            <div class="stat-label">Banned Users</div>
+                            <div class="stat-change negative" id="banned-change">+0 today</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-sections">
+                    <div class="dashboard-section glass-effect">
+                        <h3><i class="fas fa-chart-line"></i> Quick Statistics</h3>
+                        <div class="quick-stats">
+                            <div class="quick-stat">
+                                <span class="label">Active Downloads:</span>
+                                <span class="value" id="active-downloads">0</span>
+                                <span class="trend trend-up">↗️</span>
+                            </div>
+                            <div class="quick-stat">
+                                <span class="label">Storage Used:</span>
+                                <span class="value" id="storage-used">0 MB</span>
+                                <span class="trend trend-neutral">➡️</span>
+                            </div>
+                            <div class="quick-stat">
+                                <span class="label">API Requests:</span>
+                                <span class="value" id="api-requests">0</span>
+                                <span class="trend trend-up">↗️</span>
+                            </div>
+                            <div class="quick-stat">
+                                <span class="label">Uptime:</span>
+                                <span class="value" id="uptime">0h 0m</span>
+                                <span class="trend trend-up">↗️</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-section glass-effect">
+                        <h3><i class="fas fa-clock"></i> Recent Activity</h3>
+                        <div class="activity-list" id="recent-downloads">
+                            <div class="activity-item loading">
+                                <div class="activity-icon"><i class="fas fa-spinner fa-spin"></i></div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Loading recent activity...</div>
+                                    <div class="activity-time">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="users" class="tab-content">
+                <div class="section-header">
+                    <h2><i class="fas fa-users"></i> User Management</h2>
+                    <div class="header-actions">
+                        <div class="search-container">
+                            <input type="text" id="user-search" placeholder="Search users..." oninput="searchUsers()">
+                            <i class="fas fa-search search-icon"></i>
+                        </div>
+                        <button class="btn btn-primary" onclick="showUserModal()">
+                            <i class="fas fa-plus"></i> Add User
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportUsers()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="users-controls">
+                    <div class="filter-group">
+                        <select id="user-filter" onchange="filterUsers()">
+                            <option value="all">All Users</option>
+                            <option value="admin">Admins Only</option>
+                            <option value="banned">Banned Users</option>
+                            <option value="active">Active Users</option>
+                        </select>
+                    </div>
+                    <div class="pagination-info">
+                        <span id="users-count">Showing 0 of 0 users</span>
+                    </div>
+                </div>
+                
+                <div class="users-table-container glass-effect">
+                    <table class="users-table" id="users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Downloads</th>
+                                <th>Joined</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <tr>
+                                <td colspan="8" class="loading-cell">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading users...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Variables Tab -->
+            <div id="variables" class="tab-content">
+                <div class="section-header">
+                    <h2><i class="fas fa-cogs"></i> Variable Management</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" onclick="refreshVariables()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <button class="btn btn-primary" onclick="showVarModal()">
+                            <i class="fas fa-plus"></i> Add Variable
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="variables-content">
+                    <div class="variables-form glass-effect">
+                        <h3>Create / Update Variable</h3>
+                        <form id="var-form" onsubmit="saveVariable(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Variable Key</label>
+                                    <input type="text" id="var-key" required placeholder="e.g. WELCOME_MESSAGE">
+                                </div>
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <input type="text" id="var-desc" placeholder="Variable description">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Value</label>
+                                <textarea id="var-value" required rows="4" placeholder="Variable value..."></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Variable
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="clearVarForm()">
+                                    <i class="fas fa-times"></i> Clear
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="variables-list glass-effect">
+                        <h3>Existing Variables</h3>
+                        <div id="vars-list" class="vars-grid">
+                            <!-- JS populated -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Broadcast Tab -->
+            <div id="broadcast" class="tab-content">
+                <div class="section-header">
+                    <h2><i class="fas fa-bullhorn"></i> Broadcast Message</h2>
+                </div>
+                
+                <div class="broadcast-content">
+                    <div class="broadcast-form glass-effect">
+                        <h3>Send Message to All Users</h3>
+                        <form onsubmit="sendBroadcast(event)">
+                            <div class="form-group">
+                                <label>Message</label>
+                                <textarea id="broadcast-msg" rows="6" required placeholder="Type your message here..."></textarea>
+                                <div class="char-counter">
+                                    <span id="char-count">0</span>/1000 characters
+                                </div>
+                            </div>
+                            <div class="broadcast-options">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="broadcast-preview"> Preview before sending
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="broadcast-persistent"> Mark as important
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Send Broadcast
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="previewBroadcast()">
+                                    <i class="fas fa-eye"></i> Preview
+                                </button>
+                            </div>
+                        </form>
+                        <div id="broadcast-result" class="mt-4"></div>
+                    </div>
+                    
+                    <div class="broadcast-history glass-effect">
+                        <h3>Recent Broadcasts</h3>
+                        <div id="broadcast-history">
+                            <!-- JS populated -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-content">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-bar"></i> Analytics & Reports</h2>
+                    <div class="header-actions">
+                        <select id="analytics-period" onchange="updateAnalytics()">
+                            <option value="7">Last 7 days</option>
+                            <option value="30">Last 30 days</option>
+                            <option value="90">Last 3 months</option>
+                            <option value="365">Last year</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="exportAnalytics()">
+                            <i class="fas fa-download"></i> Export Report
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="analytics-content">
+                    <div class="analytics-grid">
+                        <div class="analytics-chart glass-effect">
+                            <h3>Download Trends</h3>
+                            <canvas id="downloads-chart"></canvas>
+                        </div>
+                        <div class="analytics-chart glass-effect">
+                            <h3>User Growth</h3>
+                            <canvas id="users-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-stats glass-effect">
+                        <h3>Detailed Statistics</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-label">Most Popular Platform</span>
+                                <span class="stat-value" id="popular-platform">YouTube</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Average Daily Downloads</span>
+                                <span class="stat-value" id="avg-downloads">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Peak Usage Hour</span>
+                                <span class="stat-value" id="peak-hour">0:00</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Most Active User</span>
+                                <span class="stat-value" id="active-user">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-content">
+                <div class="section-header">
+                    <h2><i class="fas fa-sliders-h"></i> System Settings</h2>
+                </div>
+                
+                <div class="settings-content">
+                    <div class="settings-section glass-effect">
+                        <h3><i class="fas fa-server"></i> System Configuration</h3>
+                        <form id="settings-form" onsubmit="saveSettings(event)">
+                            <div class="settings-grid">
+                                <div class="form-group">
+                                    <label>Max Downloads per User</label>
+                                    <input type="number" id="max-downloads" value="100" min="1" max="1000">
+                                </div>
+                                <div class="form-group">
+                                    <label>File Retention (hours)</label>
+                                    <input type="number" id="file-retention" value="24" min="1" max="168">
+                                </div>
+                                <div class="form-group">
+                                    <label>API Rate Limit (per minute)</label>
+                                    <input type="number" id="rate-limit" value="30" min="1" max="100">
+                                </div>
+                                <div class="form-group">
+                                    <label>Max File Size (MB)</label>
+                                    <input type="number" id="max-file-size" value="500" min="50" max="2000">
+                                </div>
+                            </div>
+                            
+                            <div class="settings-options">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enable-analytics" checked> Enable analytics tracking
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enable-logging" checked> Enable detailed logging
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="maintenance-mode"> Maintenance mode
+                                </label>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Settings
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="resetSettings()">
+                                    <i class="fas fa-undo"></i> Reset to Defaults
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="settings-section glass-effect">
+                        <h3><i class="fas fa-database"></i> Database Management</h3>
+                        <div class="database-actions">
+                            <button class="btn btn-warning" onclick="cleanupDatabase()">
+                                <i class="fas fa-broom"></i> Cleanup Database
+                            </button>
+                            <button class="btn btn-info" onclick="backupDatabase()">
+                                <i class="fas fa-download"></i> Backup Database
+                            </button>
+                            <button class="btn btn-danger" onclick="resetDatabase()">
+                                <i class="fas fa-trash"></i> Reset Database
+                            </button>
+                        </div>
+                        <div id="database-status" class="mt-4"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Live Logs Tab -->
+            <div id="logs" class="tab-content">
+                <div class="section-header">
+                    <h2><i class="fas fa-stream"></i> Live System Logs</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" onclick="clearLogs()">
+                            <i class="fas fa-trash"></i> Clear Logs
+                        </button>
+                        <button class="btn btn-primary" onclick="exportLogs()">
+                            <i class="fas fa-download"></i> Export Logs
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="logs-content">
+                    <div class="logs-controls">
+                        <div class="filter-group">
+                            <select id="log-level" onchange="filterLogs()">
+                                <option value="all">All Levels</option>
+                                <option value="info">Info</option>
+                                <option value="success">Success</option>
+                                <option value="warning">Warning</option>
+                                <option value="error">Error</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <select id="log-source" onchange="filterLogs()">
+                                <option value="all">All Sources</option>
+                                <option value="bot">Telegram Bot</option>
+                                <option value="api">API</option>
+                                <option value="system">System</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="auto-scroll" checked> Auto-scroll
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="logs-display glass-effect">
+                        <div class="log-entries" id="log-entries">
+                            <div class="log-entry loading">
+                                <i class="fas fa-spinner fa-spin"></i> Connecting to live logs...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>User Management</h3>
+                <button class="modal-close" onclick="closeModal('user-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- User management form will be here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="var-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Variable Management</h3>
+                <button class="modal-close" onclick="closeModal('var-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Variable management form will be here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
