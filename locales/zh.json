@@ -75,5 +75,6 @@
   "admin_group_missing": "GROUP_CHAT_ID 未设置。",
   "menu_back": "返回",
   "download_started": "下载已开始。",
-  "cancelled_by_admin": "已被管理员取消。"
+  "cancelled_by_admin": "已被管理员取消。",
+  "error_file_invalid": "下载文件未通过完整性检查。"
 }

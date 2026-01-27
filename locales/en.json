@@ -75,5 +75,6 @@
   "admin_group_missing": "GROUP_CHAT_ID is not set.",
   "menu_back": "Back",
   "download_started": "Download started.",
-  "cancelled_by_admin": "Cancelled by admin."
+  "cancelled_by_admin": "Cancelled by admin.",
+  "error_file_invalid": "Downloaded file failed integrity check."
 }

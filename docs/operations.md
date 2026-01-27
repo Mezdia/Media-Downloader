@@ -65,6 +65,6 @@ GROUP BY user_id;
 
 ## 7) Data retention and cleanup
 
-- Downloaded files are temporary and removed after processing.
+- Downloaded files are temporary and removed immediately after successful upload verification.
 - Empty per-job download folders are pruned automatically.
 - Database file location is configured via `DATABASE_URI`.

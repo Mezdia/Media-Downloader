@@ -10,6 +10,7 @@ Production-ready multilingual Telegram bot for YouTube downloads with:
 - six-language UI (`en, fa, ar, zh, ru, es`)
 - reaction + temporary UX messages (`👀/🤖`, `👾`, `Processing...`)
 - About section with GitHub buttons and required Mezdia texts
+- local file integrity check before upload and immediate cleanup after upload verification
 
 ## Tech stack
 
@@ -74,6 +75,27 @@ Or:
 python -m ytdl_bot.main
 ```
 
+## Railway deploy
+
+This repo includes `Dockerfile` and `railway.json`.
+
+1. Push this repository to GitHub.
+2. In Railway, create a new project from the repo.
+3. Set all required environment variables from `.env.example`.
+4. Deploy.
+
+The container start command runs migration then starts the bot:
+
+```bash
+ytdl-bot-migrate && ytdl-bot
+```
+
+Notes:
+
+- `ffmpeg` is installed in the container image.
+- Bot uses long polling (no webhook URL required).
+- Service type should be kept as a worker/background service.
+
 ## Localization
 
 Localization files are in `locales/`:
@@ -98,6 +120,7 @@ All visible strings/buttons/status/admin-help texts are localized.
    - check cache key `{youtube_id}:{quality}`
    - if cached: copy from hidden group to user (no forward tag)
    - if not cached: download, upload to user, upload cached canonical copy to group, save cache metadata
+   - after upload verification, local file is deleted immediately from its full path and empty temp folders are pruned
 6. Animated status message is shown during processing, then deleted after completion.
 7. Final caption always ends with `@${BOT_TELEGRAM_ID}`.
 

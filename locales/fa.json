@@ -75,5 +75,6 @@
   "admin_group_missing": "GROUP_CHAT_ID تنظیم نشده است.",
   "menu_back": "بازگشت",
   "download_started": "دانلود شروع شد.",
-  "cancelled_by_admin": "دانلود توسط ادمین لغو شد."
+  "cancelled_by_admin": "دانلود توسط ادمین لغو شد.",
+  "error_file_invalid": "فایل دانلود شده از بررسی سلامت عبور نکرد."
 }

@@ -26,6 +26,7 @@ from .utils import build_final_caption, extract_first_youtube_url, format_bytes,
 from .ux import apply_random_reaction, safe_delete_messages, send_processing_messages
 from .youtube import YoutubeServiceError
 from .logic import serve_cached_video
+from .media import remove_file_and_empty_parents, upload_size_looks_valid, validate_local_video_file
 
 
 def build_dispatcher(app_state: AppState) -> Dispatcher:
@@ -800,6 +801,26 @@ def build_dispatcher(app_state: AppState) -> Dispatcher:
                     progress_callback=hook,
                 )
                 probe_file_path = download_result.file_path
+
+            file_health = await asyncio.to_thread(
+                validate_local_video_file,
+                download_result.file_path,
+                app_state.settings.ffmpeg_path,
+            )
+            if not file_health.ok:
+                await bot.send_message(request.chat_id, app_state.i18n.t(lang, "error_file_invalid"))
+                await progress.stage_log("Error", error=f"integrity_check_failed:{file_health.reason}")
+                await app_state.admin_logger.notify(
+                    f"[{datetime.now(UTC).isoformat()}] Integrity check failed user={request.user_id} "
+                    f"video={request.youtube_id} quality={selected_quality}p reason={file_health.reason}"
+                )
+                await progress.finish()
+                return
+
+            await progress.stage_log(
+                "Integrity check passed",
+                size_bytes=file_health.file_size_bytes,
+            )
             if not is_admin_user:
                 _, remaining = await _quota_remaining(request.user_id)
                 if download_result.file_size_bytes > remaining:
@@ -846,6 +867,14 @@ def build_dispatcher(app_state: AppState) -> Dispatcher:
             )
             await progress.update("uploading", 100.0, force=True)
 
+            user_remote_size = user_video_message.video.file_size if user_video_message.video else None
+            if not upload_size_looks_valid(download_result.file_size_bytes, user_remote_size):
+                await app_state.admin_logger.notify(
+                    f"[{datetime.now(UTC).isoformat()}] Upload verification warning "
+                    f"user={request.user_id} video={request.youtube_id} quality={selected_quality}p "
+                    f"local_size={download_result.file_size_bytes} telegram_size={user_remote_size}"
+                )
+
             if not is_admin_user:
                 await app_state.db.add_usage_event(request.user_id, download_result.file_size_bytes)
 
@@ -855,31 +884,56 @@ def build_dispatcher(app_state: AppState) -> Dispatcher:
                 cache_is_enabled = False
 
             if cache_is_enabled and group_chat_id is not None:
-                try:
-                    group_message = await bot.send_video(
-                        chat_id=group_chat_id,
-                        video=user_video_message.video.file_id,
-                        caption=caption,
-                        supports_streaming=True,
-                    )
-                    if group_message.video:
-                        await app_state.db.upsert_cache(
-                            youtube_id=request.youtube_id,
-                            quality=selected_quality,
-                            group_chat_id=group_chat_id,
-                            group_message_id=group_message.message_id,
-                            file_id=group_message.video.file_id,
-                            filesize_bytes=download_result.file_size_bytes,
-                            uploader_id=request.user_id,
+                if user_video_message.video:
+                    try:
+                        group_message = await bot.send_video(
+                            chat_id=group_chat_id,
+                            video=user_video_message.video.file_id,
+                            caption=caption,
+                            supports_streaming=True,
                         )
-                except TelegramBadRequest as exc:
-                    await _set_cache_enabled(False)
+                        group_remote_size = group_message.video.file_size if group_message.video else None
+                        if group_message.video and upload_size_looks_valid(download_result.file_size_bytes, group_remote_size):
+                            await app_state.db.upsert_cache(
+                                youtube_id=request.youtube_id,
+                                quality=selected_quality,
+                                group_chat_id=group_chat_id,
+                                group_message_id=group_message.message_id,
+                                file_id=group_message.video.file_id,
+                                filesize_bytes=download_result.file_size_bytes,
+                                uploader_id=request.user_id,
+                            )
+                        else:
+                            await app_state.admin_logger.notify(
+                                f"[{datetime.now(UTC).isoformat()}] Cache upload verification failed "
+                                f"video={request.youtube_id} quality={selected_quality}p "
+                                f"local_size={download_result.file_size_bytes} telegram_size={group_remote_size}"
+                            )
+                    except TelegramBadRequest as exc:
+                        await _set_cache_enabled(False)
+                        await app_state.admin_logger.notify(
+                            f"[{datetime.now(UTC).isoformat()}] {app_state.i18n.t(lang, 'admin_cache_upload_failed')} error={exc}"
+                        )
+                else:
                     await app_state.admin_logger.notify(
-                        f"[{datetime.now(UTC).isoformat()}] {app_state.i18n.t(lang, 'admin_cache_upload_failed')} error={exc}"
+                        f"[{datetime.now(UTC).isoformat()}] Cache skipped: user message video payload missing "
+                        f"video={request.youtube_id} quality={selected_quality}p"
                     )
             else:
                 await app_state.admin_logger.notify(
                     f"[{datetime.now(UTC).isoformat()}] {app_state.i18n.t(lang, 'cache_disabled_notice')}"
+                )
+
+            try:
+                await asyncio.to_thread(
+                    remove_file_and_empty_parents,
+                    download_result.file_path,
+                    app_state.settings.storage_path,
+                )
+                probe_file_path = None
+            except Exception as exc:
+                await app_state.admin_logger.notify(
+                    f"[{datetime.now(UTC).isoformat()}] file_cleanup_failed path={download_result.file_path} error={exc}"
                 )
 
             await progress.stage_log(
