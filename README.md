@@ -1,134 +1,190 @@
-# YTDL Telegram Bot
+# Media Downloader Telegram Bot
 
-Production-ready multilingual Telegram bot for YouTube downloads with:
+Production-ready Telegram bot for YouTube downloads with multilingual UX, quality selection, hidden-group caching, per-user traffic limits, and admin operations.
 
-- quality picker (`240p, 360p, 480p, 720p, 1080p, 2160p` when available)
-- server-side download via `yt-dlp` + `ffmpeg` merge support
-- hidden-group cache with stealth delivery (`copyMessage`/`file_id`, no forward header)
-- 24h rolling per-user quota (default 500 MB), unlimited admins
-- admin panel + admin commands + live admin logs
-- six-language UI (`en, fa, ar, zh, ru, es`)
-- reaction + temporary UX messages (`👀/🤖`, `👾`, `Processing...`)
-- About section with GitHub buttons and required Mezdia texts
-- local file integrity check before upload and immediate cleanup after upload verification
+## Highlights
 
-## Tech stack
+- YouTube quality picker from allowed targets: `240p, 360p, 480p, 720p, 1080p, 2160p`.
+- Reliable download pipeline with `yt-dlp` and `ffmpeg` merge support.
+- Stealth cache serving using `copyMessage` or `file_id` (no forwarded header shown to users).
+- Rolling traffic quota (24h) for regular users, unlimited for admins.
+- Admin panel and admin commands for usage, cache, group config, forced copy, and job cancellation.
+- Live status updates for users and live stage logs for admins.
+- Full localization for `en`, `fa`, `ar`, `zh`, `ru`, `es`.
+- Temporary UX flow (`👀/🤖`, `👾`, localized `Processing...`) with cleanup.
+- Local file integrity checks before upload and immediate file cleanup after verified upload.
+- About section with Mezdia credits and GitHub buttons.
 
-- Python 3.11+
-- `aiogram` 3.x
-- `aiosqlite`
-- `yt-dlp`
-- `ffmpeg` available in PATH (or set `FFMPEG_PATH`)
+## Architecture
 
-## Required environment variables
+The bot is structured in clear layers for maintainability and production safety.
 
-Copy `.env.example` to `.env` and set values:
+### 1) Entry / bootstrap
 
-- `BOT_TOKEN` Telegram bot token
-- `BOT_TELEGRAM_ID` bot username without `@`
-- `ADMINS` admin user IDs as JSON array or comma list (example: `[123456789]`)
-- `GROUP_CHAT_ID` hidden cache group ID (example: `-1001234567890`)
-- `FORWARDER_NAME` bookkeeping display name
-- `FORWARDER_ID` bookkeeping ID
-- `GITHUB_DEVELOPER_URL` developer profile URL
-- `GITHUB_PROJECT_URL` project repo URL
+- `src/ytdl_bot/main.py`: app startup, logging init, dependency wiring.
+- `src/ytdl_bot/migrate.py`: schema migration and initial settings seed.
 
-Also configurable:
+### 2) Configuration
 
-- `DATABASE_URI` (`sqlite:///./bot.db`)
-- `STORAGE_PATH` temp download path
-- `MAX_DAILY_TRAFFIC_BYTES` default `524288000` (500MB)
-- `MAX_CONCURRENT_DOWNLOADS`
-- `DOWNLOAD_TIMEOUT_SECONDS`
-- `FFMPEG_PATH`
-- `LOG_LEVEL`
+- `src/ytdl_bot/config.py`: environment parsing and validation.
+- Supports strict required variables plus runtime tuning (quota, concurrency, storage, timeout, ffmpeg path).
 
-## Install
+### 3) Transport and handlers
+
+- `src/ytdl_bot/bot.py`: aiogram router and full user/admin flows.
+- Handles callbacks, command routing, authorization checks, cache-vs-download routing, status lifecycle, and error recovery.
+
+### 4) Domain services
+
+- `src/ytdl_bot/youtube.py`: metadata probe + downloadable format resolution + download/merge.
+- `src/ytdl_bot/progress.py`: animated user status + admin stage logging.
+- `src/ytdl_bot/media.py`: file integrity verification and post-upload cleanup helpers.
+- `src/ytdl_bot/logic.py`: isolated logic for quota checks and cached delivery helper.
+
+### 5) Persistence
+
+- `src/ytdl_bot/database.py`: SQLite schema + async CRUD operations.
+- Core tables:
+  - `users` (language + required usage columns)
+  - `usage_events` (24h rolling accounting)
+  - `cache` (youtube_id + quality -> group message/file metadata)
+  - `jobs` (active/in-flight status)
+  - `pending_requests` (quality selection context)
+  - `settings` and `admins`
+
+### 6) UI and i18n
+
+- `src/ytdl_bot/keyboards.py`: inline keyboard builders.
+- `src/ytdl_bot/i18n.py` + `locales/*.json`: localization runtime and dictionaries.
+- `src/ytdl_bot/ux.py`: reactions and transient message utilities.
+
+## Project structure
+
+```text
+.
+├─ src/ytdl_bot/
+│  ├─ bot.py
+│  ├─ config.py
+│  ├─ database.py
+│  ├─ i18n.py
+│  ├─ keyboards.py
+│  ├─ logic.py
+│  ├─ main.py
+│  ├─ media.py
+│  ├─ migrate.py
+│  ├─ progress.py
+│  ├─ ux.py
+│  └─ youtube.py
+├─ locales/
+├─ tests/
+├─ docs/operations.md
+├─ Dockerfile
+└─ railway.json
+```
+
+## Environment variables
+
+Copy `.env.example` to `.env` and set values.
+
+### Required
+
+- `BOT_TOKEN`
+- `BOT_TELEGRAM_ID`
+- `ADMINS`
+- `GROUP_CHAT_ID`
+- `FORWARDER_NAME`
+- `FORWARDER_ID`
+- `GITHUB_DEVELOPER_URL`
+- `GITHUB_PROJECT_URL`
+
+### Optional / tuning
+
+- `DATABASE_URI` (default `sqlite:///./bot.db`)
+- `STORAGE_PATH` (default `./data/downloads`)
+- `MAX_DAILY_TRAFFIC_BYTES` (default `524288000`)
+- `MAX_CONCURRENT_DOWNLOADS` (default `2`)
+- `DOWNLOAD_TIMEOUT_SECONDS` (default `1800`)
+- `FFMPEG_PATH` (default `ffmpeg`)
+- `LOG_LEVEL` (default `INFO`)
+
+## Setup and run
+
+### 1) Local setup
+
+1. Clone the repository.
+2. Create and activate virtualenv.
+3. Install dependencies.
+4. Configure `.env`.
+5. Run migration.
+6. Start bot.
 
 ```bash
+python -m venv .venv
+. .venv/bin/activate  # Linux/macOS
+# .venv\\Scripts\\activate  # Windows PowerShell
+
 python -m pip install -e .[dev]
-```
-
-## Run database migration
-
-Migration creates/updates schema and seeds initial admins/settings.
-
-```bash
 ytdl-bot-migrate
-```
-
-Or:
-
-```bash
-python -m ytdl_bot.migrate
-```
-
-## Run bot
-
-```bash
 ytdl-bot
 ```
 
-Or:
+Alternative run commands:
 
 ```bash
+python -m ytdl_bot.migrate
 python -m ytdl_bot.main
 ```
 
-## Railway deploy
+### 2) Railway deployment
 
-This repo includes `Dockerfile` and `railway.json`.
+This project already includes Railway-ready config:
 
-1. Push this repository to GitHub.
-2. In Railway, create a new project from the repo.
-3. Set all required environment variables from `.env.example`.
+- `Dockerfile`
+- `railway.json`
+
+#### Steps
+
+1. Push repository to GitHub.
+2. Create a Railway project from this repository.
+3. Add all required environment variables.
 4. Deploy.
 
-The container start command runs migration then starts the bot:
+Container startup command:
 
 ```bash
 ytdl-bot-migrate && ytdl-bot
 ```
 
-Notes:
+#### Railway notes
 
-- `ffmpeg` is installed in the container image.
-- Bot uses long polling (no webhook URL required).
-- Service type should be kept as a worker/background service.
+- `ffmpeg` is installed in the image.
+- Bot runs with long polling (no webhook needed).
+- Use Worker/background style service.
+- Use persistent volume only if you need durable local data; cache metadata is in DB and media files are transient.
 
-## Localization
+## Core runtime flow
 
-Localization files are in `locales/`:
-
-- `en.json`
-- `fa.json`
-- `ar.json`
-- `zh.json`
-- `ru.json`
-- `es.json`
-
-All visible strings/buttons/status/admin-help texts are localized.
-
-## User flow summary
-
-1. User sends YouTube link.
-2. Bot reacts (`👀` or `🤖`), sends temporary `👾` and `Processing...`.
-3. Bot probes formats and sends thumbnail + quality keyboard with approximate size.
-4. Temporary messages are deleted.
+1. User sends YouTube URL.
+2. Bot reacts (`👀`/`🤖`), sends transient `👾` and localized processing message.
+3. Bot probes metadata/formats and shows thumbnail + quality keyboard.
+4. Bot removes transient messages.
 5. On quality click:
-   - check quota (skip for admin)
-   - check cache key `{youtube_id}:{quality}`
-   - if cached: copy from hidden group to user (no forward tag)
-   - if not cached: download, upload to user, upload cached canonical copy to group, save cache metadata
-   - after upload verification, local file is deleted immediately from its full path and empty temp folders are pruned
-6. Animated status message is shown during processing, then deleted after completion.
-7. Final caption always ends with `@${BOT_TELEGRAM_ID}`.
+   - validates callback owner/admin
+   - checks rolling quota (except admins)
+   - checks hidden cache (`youtube_id:quality`)
+   - serves from cache if present, otherwise downloads and uploads
+6. After upload:
+   - validates upload size
+   - stores/updates cache entry
+   - removes local downloaded file from full path and prunes empty folders
+7. Status message is deleted from user chat after completion.
+8. Final caption always ends with `@${BOT_TELEGRAM_ID}`.
 
-## Admin panel and commands
+## Admin controls
 
-Admin panel button is only shown to IDs in `ADMINS`.
+Admin panel button is visible only for IDs in `ADMINS`.
 
-Supported admin commands:
+Available commands:
 
 - `/admin_usage <user_id>`
 - `/admin_reset_usage <user_id>`
@@ -140,28 +196,22 @@ Supported admin commands:
 - `/admin_add <user_id>`
 - `/admin_remove <user_id>`
 
-## Quota model
-
-- Rolling window: **24 hours**
-- Metric: **final sent file size** (bytes uploaded to user)
-- Non-admin default: 500 MB / 24h
-- Admins: unlimited
-
-## Tests
-
-Run:
+## Testing
 
 ```bash
 python -m pytest -q
 ```
 
-Included tests:
+Coverage includes:
 
-- cache-hit serving behavior
+- cache hit serving
 - quota enforcement
-- admin log message format
-- reaction + temporary message lifecycle
+- admin log structure
+- reaction and transient message lifecycle
+- media cleanup helpers
 
-## Operations guide
+## Operations
 
-See [docs/operations.md](docs/operations.md) for cache inspection/cleanup and group-cache troubleshooting.
+For cache inspection, cleanup, and group-cache troubleshooting see:
+
+- [docs/operations.md](docs/operations.md)
