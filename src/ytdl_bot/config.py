@@ -19,8 +19,6 @@ class Settings:
     bot_telegram_id: str
     admins: set[int]
     group_chat_id: int | None
-    forwarder_name: str
-    forwarder_id: int | None
     github_developer_url: str
     github_project_url: str
     database_path: Path
@@ -93,8 +91,6 @@ def load_settings(env_files: Iterable[str | os.PathLike[str]] | None = None) -> 
 
     admins = _parse_admins(os.getenv("ADMINS"))
     group_chat_id = _parse_int(os.getenv("GROUP_CHAT_ID"), default=None)
-    forwarder_name = os.getenv("FORWARDER_NAME", "Cache Forwarder").strip() or "Cache Forwarder"
-    forwarder_id = _parse_int(os.getenv("FORWARDER_ID"), default=None)
 
     github_developer_url = os.getenv("GITHUB_DEVELOPER_URL", "https://github.com/Mezdia").strip()
     github_project_url = os.getenv("GITHUB_PROJECT_URL", "https://github.com/Mezdia/YouTubeDownloaderBot").strip()
@@ -128,8 +124,6 @@ def load_settings(env_files: Iterable[str | os.PathLike[str]] | None = None) -> 
         bot_telegram_id=bot_telegram_id,
         admins=admins,
         group_chat_id=group_chat_id,
-        forwarder_name=forwarder_name,
-        forwarder_id=forwarder_id,
         github_developer_url=github_developer_url,
         github_project_url=github_project_url,
         database_path=database_path,

@@ -92,8 +92,6 @@ Copy `.env.example` to `.env` and set values.
 - `BOT_TELEGRAM_ID`
 - `ADMINS`
 - `GROUP_CHAT_ID`
-- `FORWARDER_NAME`
-- `FORWARDER_ID`
 - `GITHUB_DEVELOPER_URL`
 - `GITHUB_PROJECT_URL`
 
