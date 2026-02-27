@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 
 from aiogram import Bot
@@ -14,6 +15,30 @@ from .state import AppState
 from .youtube import YoutubeService
 
 
+def _resolve_locales_dir() -> Path:
+    # 1) explicit override
+    env_locales = os.getenv("LOCALES_DIR", "").strip()
+    if env_locales:
+        path = Path(env_locales).expanduser().resolve()
+        if path.exists():
+            return path
+
+    # 2) common runtime locations (source and container)
+    candidates = [
+        Path.cwd() / "locales",
+        Path(__file__).resolve().parents[2] / "locales",
+        Path(__file__).resolve().parents[1] / "locales",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    raise FileNotFoundError(
+        "Could not locate locales directory. "
+        "Set LOCALES_DIR or ensure ./locales exists in runtime working directory."
+    )
+
+
 async def _main() -> None:
     settings = load_settings()
     logging.basicConfig(
@@ -21,8 +46,7 @@ async def _main() -> None:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-    project_root = Path(__file__).resolve().parents[2]
-    locales_dir = project_root / "locales"
+    locales_dir = _resolve_locales_dir()
 
     bot = Bot(token=settings.bot_token)
     db = Database(settings.database_path)

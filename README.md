@@ -103,6 +103,7 @@ Copy `.env.example` to `.env` and set values.
 - `MAX_CONCURRENT_DOWNLOADS` (default `2`)
 - `DOWNLOAD_TIMEOUT_SECONDS` (default `1800`)
 - `FFMPEG_PATH` (default `ffmpeg`)
+- `LOCALES_DIR` (default auto-detect, usually `./locales`)
 - `LOG_LEVEL` (default `INFO`)
 
 ## Setup and run
