@@ -121,13 +121,21 @@ class ProgressSession:
 
         if self.user_status_message_id is not None:
             try:
-                await self.bot.edit_message_text(user_text, self.user_chat_id, self.user_status_message_id)
+                await self.bot.edit_message_text(
+                    text=user_text,
+                    chat_id=self.user_chat_id,
+                    message_id=self.user_status_message_id,
+                )
             except TelegramBadRequest:
                 pass
 
         for admin_id, message_id in self.admin_status_message_ids.items():
             try:
-                await self.bot.edit_message_text(admin_text, admin_id, message_id)
+                await self.bot.edit_message_text(
+                    text=admin_text,
+                    chat_id=admin_id,
+                    message_id=message_id,
+                )
             except TelegramBadRequest:
                 continue
 

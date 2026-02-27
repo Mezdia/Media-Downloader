@@ -644,7 +644,18 @@ def build_dispatcher(app_state: AppState) -> Dispatcher:
         )
 
         await callback.message.answer(
-            app_state.i18n.t(lang, "choose_quality_for", title=trim_text(probe.title, 120)),
+            "\n\n".join(
+                [
+                    app_state.i18n.t(lang, "choose_quality_for", title=trim_text(probe.title, 120)),
+                    app_state.i18n.t(
+                        lang,
+                        "video_info_line",
+                        video_id=probe.youtube_id,
+                        duration=_duration_text(probe.duration_seconds, lang),
+                        count=len(probe.qualities),
+                    ),
+                ]
+            ),
             reply_markup=quality_keyboard(new_request_id, request.user_id, quality_sizes),
         )
 
